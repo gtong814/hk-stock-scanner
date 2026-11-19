@@ -17,8 +17,8 @@ BATCH_SIZE = 50             # 每批下載股數（避免被 Yahoo 限速）
 
 # 港交所披露易 (HKEXnews) 官方滬深港通南向全部股票頁面（含繁體中文名）
 HKEXNEWS_SOUTHBOUND_URLS = [
-    "https://www2.hkexnews.hk/Shareholding-Disclosures/Stock-Connect-Shareholding/Shanghai-Connect-and-Shenzhen-Connect?sc_lang=zh-HK",
-    "https://www2.hkexnews.hk/Shareholding-Disclosures/Stock-Connect-Shareholding/Shanghai-Connect-and-Shenzhen-Connect?sc_lang=en",
+    "https://www3.hkexnews.hk/sdw/search/mutualmarket_c.aspx?t=hk",
+    "https://www3.hkexnews.hk/sdw/search/mutualmarket.aspx?t=hk",
 ]
 
 # 備用港股通核心名單（萬一官方連線暫時異常時自動啟用）
