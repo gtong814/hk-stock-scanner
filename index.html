@@ -1,378 +1,26 @@
-<!DOCTYPE html>
-<html lang="zh-Hant" class="dark">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sky Sir Combo Alert Engine — 全港上市股票掃描平台 (HKEX)</title>
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts: Inter, Noto Sans TC, JetBrains Mono -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'Noto Sans TC', 'system-ui', 'sans-serif'],
-            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace']
-          },
-          colors: {
-            obsidian: 'rgb(var(--bg-main-rgb) / <alpha-value>)',
-            surface: 'rgb(var(--bg-card-rgb) / <alpha-value>)',
-            surfaceAlt: 'rgb(var(--bg-card-alt-rgb) / <alpha-value>)',
-            borderDark: 'rgb(var(--border-rgb) / <alpha-value>)',
-            bull: 'rgb(var(--bull-rgb) / <alpha-value>)',
-            bear: 'rgb(var(--bear-rgb) / <alpha-value>)',
-            amberAccent: 'rgb(var(--amber-rgb) / <alpha-value>)',
-            skyAccent: 'rgb(var(--accent-rgb) / <alpha-value>)'
-          }
-        }
-      }
-    };
-  </script>
-  <style>
-    /* =====================================================================
-       主題 CSS 變數系統 (支援 6 套預設主題、日間模式與自訂色盤即時切換)
-       ===================================================================== */
-    :root {
-      --bg-main: #0d1117;
-      --bg-main-rgb: 13 17 23;
-      --bg-card: #161b22;
-      --bg-card-rgb: 22 27 34;
-      --bg-card-alt: #1f2633;
-      --bg-card-alt-rgb: 31 38 51;
-      --border-color: #263042;
-      --border-rgb: 38 48 66;
-      --accent: #2962ff;
-      --accent-rgb: 41 98 255;
-      --bull: #26a69a;
-      --bull-rgb: 38 166 154;
-      --bear: #ef5350;
-      --bear-rgb: 239 83 80;
-      --amber: #f59e0b;
-      --amber-rgb: 245 158 11;
-      --text-primary: #f1f5f9;
-      --text-secondary: #94a3b8;
-    }
-
-    /* 全站捲軸與基礎樣式 */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg-main); }
-    ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 9999px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
-
-    body {
-      background-color: var(--bg-main);
-      color: var(--text-primary);
-      font-family: 'Inter', 'Noto Sans TC', system-ui, sans-serif;
-      transition: background-color 0.2s ease, color 0.2s ease;
-    }
-
-    /* 主色按鈕動態跟隨 --accent */
-    .btn-accent {
-      background-color: var(--accent);
-      color: #ffffff;
-    }
-    .btn-accent:hover {
-      filter: brightness(1.1);
-    }
-
-    /* 極簡明亮日間模式高對比文字與元件適配 */
-    html.theme-light body {
-      color: #0f172a;
-    }
-    html.theme-light .text-white { color: #0f172a !important; }
-    html.theme-light .text-slate-100 { color: #1e293b !important; }
-    html.theme-light .text-slate-200 { color: #1e293b !important; }
-    html.theme-light .text-slate-300 { color: #334155 !important; }
-    html.theme-light .text-slate-400 { color: #64748b !important; }
-    html.theme-light .text-slate-500 { color: #64748b !important; }
-    html.theme-light .bg-slate-800 { background-color: #e2e8f0 !important; }
-    html.theme-light .bg-slate-700 { background-color: #cbd5e1 !important; }
-    html.theme-light .hover\:bg-slate-800:hover { background-color: #e2e8f0 !important; }
-    html.theme-light .hover\:text-white:hover { color: #0f172a !important; }
-    html.theme-light .btn-accent,
-    html.theme-light .btn-accent * { color: #ffffff !important; }
-    html.theme-light input[type="date"]::-webkit-calendar-picker-indicator {
-      filter: none;
-    }
-
-    input[type="date"]::-webkit-calendar-picker-indicator {
-      filter: invert(0.85);
-      cursor: pointer;
-    }
-
-    /* 色盤選擇器外觀美化 */
-    input[type="color"] {
-      -webkit-appearance: none;
-      appearance: none;
-      border: 1px solid var(--border-color);
-      border-radius: 0.5rem;
-      padding: 2px;
-      background: var(--bg-main);
-      cursor: pointer;
-    }
-    input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-    input[type="color"]::-webkit-color-swatch { border: none; border-radius: 0.35rem; }
-
-    canvas {
-      touch-action: none;
-    }
-
-    /* 頁面切換淡入微動畫 */
-    .view-fade {
-      animation: viewFadeIn 0.22s ease-out;
-    }
-    @keyframes viewFadeIn {
-      from { opacity: 0; transform: translateY(4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* CSV 拖曳區高亮 */
-    .drop-active {
-      outline: 2px dashed var(--accent);
-      outline-offset: -4px;
-      background-color: rgb(var(--accent-rgb) / 0.1);
-    }
-  </style>
-</head>
-<body class="bg-obsidian text-slate-200 min-h-screen flex flex-col overflow-x-hidden selection:bg-skyAccent/30">
-
-  <!-- Toast 通知容器 (取代瀏覽器 alert/confirm) -->
-  <div id="toastContainer" class="fixed top-4 right-4 z-[60] flex flex-col gap-2 max-w-sm w-[calc(100%-2rem)] pointer-events-none"></div>
-
-  <!-- =================================================================== -->
-  <!-- 品牌與主題客製化中心 (Slide-Over Drawer) -->
-  <!-- =================================================================== -->
-  <div id="themeDrawerBackdrop" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-xs transition-opacity"></div>
-  <aside id="themeDrawer" class="fixed top-0 right-0 z-50 h-full w-full max-w-md bg-surface border-l border-borderDark shadow-2xl transform translate-x-full transition-transform duration-300 flex flex-col">
-    <!-- Drawer 標題列 -->
-    <div class="px-5 py-4 border-b border-borderDark flex items-center justify-between shrink-0">
-      <div class="flex items-center gap-2.5">
-        <span class="w-8 h-8 rounded-xl btn-accent flex items-center justify-center text-sm shadow">🎨</span>
-        <div>
-          <h2 class="text-sm font-extrabold text-white">品牌與主題客製化中心</h2>
-          <p class="text-[11px] text-slate-400">即時套用全站配色、K 線圖風格與品牌標題</p>
-        </div>
-      </div>
-      <button id="closeThemeDrawerBtn" class="p-2 rounded-xl bg-obsidian hover:bg-surfaceAlt border border-borderDark text-slate-400 hover:text-white transition" aria-label="關閉客製化面板">✕</button>
-    </div>
-
-    <!-- Drawer 捲動內容 -->
-    <div class="flex-1 overflow-y-auto p-5 space-y-6">
-
-      <!-- 區塊 1: 品牌標題與識別設定 -->
-      <div class="space-y-3">
-        <div class="flex items-center justify-between">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-skyAccent">1. 品牌標題與識別 (Branding)</h3>
-          <span class="text-[10px] text-slate-500">即時預覽 · 自動儲存</span>
-        </div>
-
-        <div class="space-y-2.5 bg-obsidian/70 border border-borderDark rounded-2xl p-3.5">
-          <div>
-            <label for="cfgBrandTitle" class="block text-[11px] font-semibold text-slate-300 mb-1">網站品牌主標題 (Brand Title)</label>
-            <input id="cfgBrandTitle" type="text" maxlength="40" placeholder="Sky Sir Combo Engine" class="w-full bg-surface border border-borderDark rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-skyAccent" />
-          </div>
-
-          <div>
-            <label for="cfgBrandSubtitle" class="block text-[11px] font-semibold text-slate-300 mb-1">副標題 / 標語 (Subtitle)</label>
-            <input id="cfgBrandSubtitle" type="text" maxlength="60" placeholder="全港上市股票掃描平台 (HKEX)" class="w-full bg-surface border border-borderDark rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-skyAccent" />
-          </div>
-
-          <div>
-            <label for="cfgLogoBadge" class="block text-[11px] font-semibold text-slate-300 mb-1">Logo 徽章文字 / 圖示 (1–3 字元)</label>
-            <div class="flex items-center gap-2">
-              <input id="cfgLogoBadge" type="text" maxlength="3" placeholder="SS" class="w-24 bg-surface border border-borderDark rounded-xl px-3 py-2 text-xs font-bold text-center text-white focus:outline-none focus:border-skyAccent" />
-              <div class="flex items-center gap-1 flex-wrap">
-                <button type="button" data-logo-preset="SS" class="logo-preset-btn px-2 py-1.5 rounded-lg bg-surface hover:bg-surfaceAlt border border-borderDark text-[11px] font-bold text-slate-200">SS</button>
-                <button type="button" data-logo-preset="HK" class="logo-preset-btn px-2 py-1.5 rounded-lg bg-surface hover:bg-surfaceAlt border border-borderDark text-[11px] font-bold text-slate-200">HK</button>
-                <button type="button" data-logo-preset="📈" class="logo-preset-btn px-2 py-1.5 rounded-lg bg-surface hover:bg-surfaceAlt border border-borderDark text-[11px]">📈</button>
-                <button type="button" data-logo-preset="⚡" class="logo-preset-btn px-2 py-1.5 rounded-lg bg-surface hover:bg-surfaceAlt border border-borderDark text-[11px]">⚡</button>
-                <button type="button" data-logo-preset="🎯" class="logo-preset-btn px-2 py-1.5 rounded-lg bg-surface hover:bg-surfaceAlt border border-borderDark text-[11px]">🎯</button>
-                <button type="button" data-logo-preset="🦁" class="logo-preset-btn px-2 py-1.5 rounded-lg bg-surface hover:bg-surfaceAlt border border-borderDark text-[11px]">🦁</button>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label for="cfgFooterText" class="block text-[11px] font-semibold text-slate-300 mb-1">頁尾版權與免責文字 (Footer Text)</label>
-            <input id="cfgFooterText" type="text" maxlength="100" placeholder="© tvstudy202211 · 僅供技術分析教學與研究用途" class="w-full bg-surface border border-borderDark rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-skyAccent" />
-          </div>
-        </div>
-      </div>
-
-      <!-- 區塊 2: 6 套精選金融主題預設 -->
-      <div class="space-y-3">
-        <h3 class="text-xs font-bold uppercase tracking-wider text-skyAccent">2. 精選金融主題預設 (6 Themes)</h3>
-        <div id="themePresetGrid" class="grid grid-cols-2 gap-2.5"></div>
-      </div>
-
-      <!-- 區塊 3: 升跌顏色慣例獨立切換 (任何主題皆可套用) -->
-      <div class="space-y-2.5">
-        <h3 class="text-xs font-bold uppercase tracking-wider text-skyAccent">3. 陰陽燭與升跌配色慣例</h3>
-        <div class="grid grid-cols-2 gap-2 bg-obsidian/70 p-1.5 rounded-xl border border-borderDark">
-          <button id="convUsBtn" type="button" class="px-3 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5">
-            <span class="w-2.5 h-2.5 rounded-full bg-[#26a69a]"></span>
-            <span>美式 綠升紅跌</span>
-          </button>
-          <button id="convHkBtn" type="button" class="px-3 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5">
-            <span class="w-2.5 h-2.5 rounded-full bg-[#ef4444]"></span>
-            <span>港式 紅升綠跌</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- 區塊 4: 精細自訂色盤微調 -->
-      <div class="space-y-3">
-        <h3 class="text-xs font-bold uppercase tracking-wider text-skyAccent">4. 自訂色盤微調 (Fine-Tune Colors)</h3>
-        <div class="grid grid-cols-1 gap-2.5 bg-obsidian/70 border border-borderDark rounded-2xl p-3.5 text-xs">
-          <label class="flex items-center justify-between">
-            <div>
-              <span class="font-semibold text-slate-200 block">主強調色 (Primary Accent)</span>
-              <span id="hexAccent" class="text-[10px] font-mono text-slate-400">#2962ff</span>
-            </div>
-            <input id="pickAccent" type="color" class="w-11 h-8" />
-          </label>
-          <label class="flex items-center justify-between">
-            <div>
-              <span class="font-semibold text-slate-200 block">主背景底色 (Background Base)</span>
-              <span id="hexBgMain" class="text-[10px] font-mono text-slate-400">#0d1117</span>
-            </div>
-            <input id="pickBgMain" type="color" class="w-11 h-8" />
-          </label>
-          <label class="flex items-center justify-between">
-            <div>
-              <span class="font-semibold text-slate-200 block">卡片面板底色 (Card Surface)</span>
-              <span id="hexBgCard" class="text-[10px] font-mono text-slate-400">#161b22</span>
-            </div>
-            <input id="pickBgCard" type="color" class="w-11 h-8" />
-          </label>
-          <label class="flex items-center justify-between">
-            <div>
-              <span class="font-semibold text-slate-200 block">陽燭 / 上升色 (Bull Color)</span>
-              <span id="hexBull" class="text-[10px] font-mono text-slate-400">#26a69a</span>
-            </div>
-            <input id="pickBull" type="color" class="w-11 h-8" />
-          </label>
-          <label class="flex items-center justify-between">
-            <div>
-              <span class="font-semibold text-slate-200 block">陰燭 / 下跌色 (Bear Color)</span>
-              <span id="hexBear" class="text-[10px] font-mono text-slate-400">#ef5350</span>
-            </div>
-            <input id="pickBear" type="color" class="w-11 h-8" />
-          </label>
-        </div>
-      </div>
-    </div>
-
-    <!-- Drawer 底部操作按鈕 -->
-    <div class="p-4 border-t border-borderDark bg-obsidian/70 flex flex-col gap-2 shrink-0">
-      <button id="copyBrandConfigBtn" type="button" class="w-full py-2.5 rounded-xl btn-accent font-bold text-xs transition shadow flex items-center justify-center gap-1.5">
-        <span>📋 複製客製化預設碼 (Copy Config JSON)</span>
-      </button>
-      <button id="resetBrandThemeBtn" type="button" class="w-full py-2 rounded-xl bg-surface hover:bg-surfaceAlt border border-borderDark text-slate-300 font-semibold text-xs transition">
-        ↺ 重設為預設值 (Reset to Default)
-      </button>
-    </div>
-  </aside>
-
-  <!-- =================================================================== -->
-  <!-- 全站置頂導覽列 (Persistent SaaS Navbar) -->
-  <!-- =================================================================== -->
-  <header class="sticky top-0 z-40 bg-obsidian/90 backdrop-blur-md border-b border-borderDark">
-    <div class="max-w-[1600px] mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-3">
-      <!-- 左側：品牌 Logo 與市場狀態 -->
-      <div class="flex items-center gap-3 shrink-0">
-        <button id="brandHomeBtn" class="flex items-center gap-2.5 text-left group">
-          <div class="w-9 h-9 rounded-xl btn-accent flex items-center justify-center shadow-lg transition transform group-hover:scale-105">
-            <span id="brandLogoBadge" class="text-sm font-extrabold tracking-tight leading-none">SS</span>
-          </div>
-          <div>
-            <div class="flex items-center gap-1.5">
-              <span id="brandTitleNav" class="text-sm sm:text-base font-extrabold tracking-tight text-white">Sky Sir Combo Engine</span>
-              <span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-skyAccent/15 text-skyAccent border border-skyAccent/30">v6</span>
-            </div>
-            <p id="brandSubtitleNav" class="text-[10px] text-slate-400 hidden xl:block">全港上市股票掃描平台 (HKEX)</p>
-          </div>
-        </button>
-
+<!-- ... existing code ... -->
         <!-- 港股市場狀態徽章 -->
         <div id="marketStatusBadge" class="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface border border-borderDark text-[11px] font-medium text-slate-300">
           <span id="marketStatusDot" class="w-2 h-2 rounded-full bg-bull"></span>
           <span id="marketStatusText">HKEX 港股市場</span>
         </div>
+
+        <!-- 雲端港股通數據狀態徽章 -->
+        <div id="headerCloudStatusPill" class="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-500/10 border border-sky-500/30 text-[11px] font-semibold text-skyAccent">
+          <span id="headerCloudDot" class="w-2 h-2 rounded-full bg-skyAccent animate-pulse"></span>
+          <span id="headerCloudText">正在連線雲端港股通...</span>
+        </div>
       </div>
 
       <!-- 中間：五大網站頁面導覽 (桌面版) -->
-      <nav class="hidden lg:flex items-center gap-1 bg-surface p-1 rounded-xl border border-borderDark">
-        <button data-nav="dashboard" class="nav-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold transition">總覽</button>
-        <button data-nav="chart" class="nav-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold transition">圖表分析</button>
-        <button data-nav="scanner" class="nav-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold transition">全港股掃描器</button>
-        <button data-nav="watchlist" class="nav-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
-          <span>自選清單</span>
-          <span id="navWatchlistCount" class="px-1.5 py-0.2 text-[10px] rounded-full bg-obsidian text-skyAccent font-mono">6</span>
-        </button>
-        <button data-nav="guide" class="nav-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold transition">組合攻略與部署</button>
-      </nav>
-
-      <!-- 右側：全站港股快速搜尋列 + 主題與品牌客製化按鈕 -->
-      <div class="flex items-center gap-2">
-        <div class="relative flex items-center">
-          <input id="globalSearchInput" type="text" placeholder="搜尋代號如 0700、9988..." class="w-32 sm:w-48 bg-surface border border-borderDark focus:border-skyAccent rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none transition" />
-          <svg class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"/>
-          </svg>
-          <button id="globalSearchBtn" class="hidden sm:inline-flex ml-1.5 px-2.5 py-1.5 rounded-xl btn-accent font-bold text-xs transition shrink-0">查看</button>
-        </div>
-
-        <!-- 主題與品牌客製化按鈕 -->
-        <button id="openThemeDrawerBtn" class="px-2.5 sm:px-3 py-1.5 rounded-xl bg-surface hover:bg-surfaceAlt border border-borderDark hover:border-skyAccent text-xs font-bold text-slate-200 transition flex items-center gap-1.5 shrink-0" title="開啟品牌與主題客製化中心">
-          <svg class="w-4 h-4 text-skyAccent" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
-          </svg>
-          <span class="hidden sm:inline">主題與品牌</span>
-        </button>
-
-        <!-- 手機版選單開關 -->
-        <button id="mobileNavToggle" class="lg:hidden p-2 rounded-xl bg-surface border border-borderDark text-slate-300 hover:text-white" aria-label="開啟導覽選單">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
-          </svg>
-        </button>
-      </div>
-    </div>
-
-    <!-- 手機版折疊導覽列 -->
-    <div id="mobileNavDrawer" class="hidden lg:hidden border-t border-borderDark bg-surface px-3 py-2.5">
-      <div class="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
-        <button data-nav="dashboard" class="nav-btn-mobile px-3 py-2 rounded-lg text-xs font-semibold text-center transition">📊 總覽</button>
-        <button data-nav="chart" class="nav-btn-mobile px-3 py-2 rounded-lg text-xs font-semibold text-center transition">📈 圖表分析</button>
-        <button data-nav="scanner" class="nav-btn-mobile px-3 py-2 rounded-lg text-xs font-semibold text-center transition">🔍 全港股掃描器</button>
-        <button data-nav="watchlist" class="nav-btn-mobile px-3 py-2 rounded-lg text-xs font-semibold text-center transition">⭐ 自選清單</button>
-        <button data-nav="guide" class="nav-btn-mobile px-3 py-2 rounded-lg text-xs font-semibold text-center transition col-span-2 sm:col-span-1">📚 攻略與部署</button>
-      </div>
-    </div>
-  </header>
-
-  <!-- =================================================================== -->
-  <!-- 主內容容器 (5 大網站頁面) -->
-  <!-- =================================================================== -->
-  <main class="flex-1 w-full max-w-[1600px] mx-auto px-3 sm:px-6 py-5">
-
-    <!-- ================================================================= -->
-    <!-- 頁面 1: 總覽 (Dashboard) -->
-    <!-- ================================================================= -->
-    <section id="view-dashboard" class="view-section view-fade space-y-6">
+<!-- ... existing code ... -->
       <!-- Hero & 快速操作列 -->
       <div class="bg-gradient-to-br from-surface via-surface to-surfaceAlt border border-borderDark rounded-2xl p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-5 shadow-xl">
         <div class="space-y-2 max-w-2xl">
-          <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-bull/10 border border-bull/30 text-bull text-[11px] font-semibold">
+          <div id="dashCloudStatusBanner" class="inline-flex flex-wrap items-center gap-2 px-3 py-1 rounded-full bg-bull/10 border border-bull/30 text-bull text-[11px] font-semibold">
             <span>⚡ Pine Script v6 狀態機引擎</span>
             <span class="text-slate-500">•</span>
-            <span id="dashActiveSourceTag">模擬演示數據 (離線即用)</span>
+            <span id="dashActiveSourceTag">正在載入雲端港股通數據...</span>
           </div>
           <h1 id="heroBrandTitle" class="text-xl sm:text-2xl font-extrabold text-white tracking-tight">Sky Sir Combo Engine</h1>
           <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">
@@ -389,13 +37,13 @@
               <option value="TERE" class="bg-surface">TERE (向上·4步)</option>
               <option value="S陽TE" class="bg-surface">S陽TE (向上·3步)</option>
               <option value="R陰E" class="bg-surface">R陰E (向下·2步)</option>
-              <option value="黑白DE" class="bg-surface">黑白DE (向下·3步)</option>
+              <option value="黑白DE" class="bg-surface">黑白DE (向下·2步)</option>
             </select>
           </div>
-          <button id="dashRunScanBtn" class="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm transition shadow-lg shadow-emerald-500/20 flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"/></svg>
-            <span>一鍵全港股掃描</span>
+          <button id="dashReloadCloudBtn" class="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm transition shadow-lg shadow-emerald-500/20 flex items-center gap-1.5">
+            <span>↻ 重新載入雲端掃描</span>
           </button>
+          <button id="dashRunScanBtn" class="hidden"></button>
           <button id="dashGoChartBtn" class="px-3.5 py-2.5 rounded-xl bg-surfaceAlt hover:bg-slate-800 border border-borderDark text-slate-200 font-semibold text-xs sm:text-sm transition">
             進入圖表分析 →
           </button>
@@ -406,19 +54,19 @@
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div class="bg-surface border border-borderDark rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-medium text-slate-400">掃描股票總數</span>
+            <span class="text-xs font-medium text-slate-400">總掃描港股通數</span>
             <span class="w-8 h-8 rounded-xl bg-sky-500/10 text-skyAccent flex items-center justify-center text-sm">📊</span>
           </div>
           <div class="mt-3 flex items-baseline gap-2">
             <span id="kpiTotal" class="text-2xl sm:text-3xl font-extrabold font-mono text-white">0</span>
             <span class="text-xs text-slate-500">隻 HKEX</span>
           </div>
-          <p class="text-[11px] text-slate-500 mt-1">涵蓋科技、金融、地產、ETF 等 7 大板塊</p>
+          <p class="text-[11px] text-slate-500 mt-1">自動同步每日收市後港股通真實數據</p>
         </div>
 
         <div class="bg-surface border border-borderDark rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-medium text-slate-400">已達成組合 (Completed)</span>
+            <span class="text-xs font-medium text-slate-400">已達成組合數 (Completed)</span>
             <span class="w-8 h-8 rounded-xl bg-emerald-500/15 text-bull flex items-center justify-center text-sm">🎯</span>
           </div>
           <div class="mt-3 flex items-baseline gap-2">
@@ -430,7 +78,7 @@
 
         <div class="bg-surface border border-borderDark rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-medium text-slate-400">接近突破 / 待確認 (Step ≥ 2)</span>
+            <span class="text-xs font-medium text-slate-400">進行中潛力股 (Step ≥ 1)</span>
             <span class="w-8 h-8 rounded-xl bg-amber-500/15 text-amberAccent flex items-center justify-center text-sm">🔥</span>
           </div>
           <div class="mt-3 flex items-baseline gap-2">
@@ -442,300 +90,55 @@
 
         <div class="bg-surface border border-borderDark rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-medium text-slate-400">觸發重數 (Reset)</span>
-            <span class="w-8 h-8 rounded-xl bg-rose-500/15 text-bear flex items-center justify-center text-sm">⚠️</span>
+            <span class="text-xs font-medium text-slate-400">高成交活躍股 (≥ 1億)</span>
+            <span class="w-8 h-8 rounded-xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center text-sm">💰</span>
           </div>
           <div class="mt-3 flex items-baseline gap-2">
-            <span id="kpiReset" class="text-2xl sm:text-3xl font-extrabold font-mono text-bear">0</span>
-            <span class="text-xs text-slate-500">隻曾穿位</span>
+            <span id="kpiReset" class="text-2xl sm:text-3xl font-extrabold font-mono text-indigo-400">0</span>
+            <span class="text-xs text-slate-500">隻大成交</span>
           </div>
-          <p class="text-[11px] text-slate-500 mt-1">穿底/穿頂自動重置，需重新檢視</p>
+          <p class="text-[11px] text-slate-500 mt-1">日成交額達 HK$1億以上之焦點港股</p>
         </div>
       </div>
-
-      <!-- 主體雙欄：熱門訊號精選 + 即時警示動態 -->
-      <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
-        <!-- 左 2 欄：熱門訊號精選 (卡片 + Sparkline) -->
-        <div class="xl:col-span-2 space-y-3">
-          <div class="flex items-center justify-between">
-            <div>
-              <h2 class="text-base font-bold text-white flex items-center gap-2">
-                <span>🌟 熱門訊號精選 (Top Triggered HK Stocks)</span>
-              </h2>
-              <p class="text-xs text-slate-400">優先列出已達成及高步數推進中的港股，點擊卡片直接開啟圖表分析</p>
-            </div>
-            <button id="dashSeeAllScannerBtn" class="text-xs font-semibold text-skyAccent hover:underline shrink-0">查看全部掃描結果 →</button>
-          </div>
-          <div id="dashFeaturedGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5"></div>
-        </div>
-
-        <!-- 右 1 欄：即時警示動態 (Live Alert Feed) -->
-        <div class="bg-surface border border-borderDark rounded-2xl flex flex-col overflow-hidden">
-          <div class="px-4 py-3.5 border-b border-borderDark flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <h2 class="text-sm font-bold text-white">即時警示動態 (Live Alert Feed)</h2>
-            </div>
-            <span id="dashFeedCount" class="text-[11px] font-mono text-slate-400">0 則</span>
-          </div>
-          <div id="dashAlertFeed" class="divide-y divide-borderDark/70 max-h-[540px] overflow-y-auto flex-1"></div>
-        </div>
-      </div>
-    </section>
-
+<!-- ... existing code ... -->
     <!-- ================================================================= -->
-    <!-- 頁面 2: 圖表分析 (Chart Studio) -->
-    <!-- ================================================================= -->
-    <section id="view-chart" class="view-section view-fade hidden space-y-4">
-      <div class="flex flex-col lg:flex-row gap-4 items-start">
-
-        <!-- 左側可折疊 Pine Script v6 設定側邊欄 -->
-        <aside id="chartSidebar" class="w-full lg:w-80 bg-surface border border-borderDark rounded-2xl p-4 space-y-4 shrink-0">
-          <div class="flex items-center justify-between border-b border-borderDark pb-2.5">
-            <h2 class="text-xs font-bold uppercase tracking-wider text-amberAccent">Pine Script v6 參數設定</h2>
-            <span id="chartComboDirBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-bull border border-emerald-500/30 font-semibold">向上組合</span>
-          </div>
-
-          <!-- 數據來源切換與 CSV 匯入 -->
-          <div class="space-y-2">
-            <label class="block text-[11px] font-semibold text-slate-400">數據來源 (Data Source)</label>
-            <select id="dataSourceSelect" class="w-full bg-obsidian border border-borderDark rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-skyAccent cursor-pointer">
-              <option value="demo">模擬演示數據 (離線即用)</option>
-              <option value="live">即時港股數據 (Yahoo Finance Proxy)</option>
-            </select>
-            <!-- CSV 匯入/拖放盒 -->
-            <label id="csvDropLabel" class="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-xl border border-dashed border-slate-700 hover:border-skyAccent bg-obsidian/60 text-xs text-slate-300 hover:text-white cursor-pointer transition">
-              <svg class="w-4 h-4 text-skyAccent shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-              <span>匯入 CSV (Yahoo / TradingView)</span>
-              <input id="csvFileInput" type="file" accept=".csv" class="hidden" />
-            </label>
-          </div>
-
-          <!-- 港股快速切換 -->
-          <div class="space-y-1.5 pt-2 border-t border-borderDark">
-            <label for="chartStockSelect" class="block text-[11px] font-semibold text-slate-400">選擇港股 (HKEX)</label>
-            <select id="chartStockSelect" class="w-full bg-obsidian border border-borderDark rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-skyAccent cursor-pointer"></select>
-          </div>
-
-          <!-- Combo Alert 設定 -->
-          <div class="space-y-3 pt-2 border-t border-borderDark">
-            <div>
-              <label for="comboTypeSelect" class="block text-xs font-medium text-slate-300 mb-1">選擇組合 (Flash Card)</label>
-              <select id="comboTypeSelect" class="w-full bg-obsidian border border-borderDark rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-amberAccent cursor-pointer">
-                <option value="S陽TERE" selected>S陽TERE (向上 · 5步)</option>
-                <option value="TERE">TERE (向上 · 4步)</option>
-                <option value="S陽TE">S陽TE (向上 · 3步)</option>
-                <option value="R陰E">R陰E (向下 · 2步)</option>
-                <option value="黑白DE">黑白DE (向下 · 3步)</option>
-              </select>
-              <p id="comboDescText" class="text-[11px] text-slate-400 mt-1.5 leading-relaxed"></p>
-            </div>
-
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <label for="startDateInput" class="text-xs font-medium text-slate-300">時光機起點 (Start Date)</label>
-                <div class="flex gap-1">
-                  <button data-preset="3M" class="preset-date-btn px-1.5 py-0.5 text-[10px] rounded bg-obsidian hover:bg-slate-800 border border-borderDark text-slate-300">3M</button>
-                  <button data-preset="6M" class="preset-date-btn px-1.5 py-0.5 text-[10px] rounded bg-obsidian hover:bg-slate-800 border border-borderDark text-slate-300">6M</button>
-                  <button data-preset="1Y" class="preset-date-btn px-1.5 py-0.5 text-[10px] rounded bg-obsidian hover:bg-slate-800 border border-borderDark text-slate-300">1Y</button>
-                </div>
-              </div>
-              <input id="startDateInput" type="date" value="2026-08-01" class="w-full bg-obsidian border border-borderDark rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-skyAccent" />
-            </div>
-
-            <div class="space-y-2.5 pt-1">
-              <label class="flex items-center justify-between cursor-pointer">
-                <div>
-                  <span class="text-xs text-slate-200 font-medium block">穿底/穿頂重數 (Reset Mode)</span>
-                  <span class="text-[10px] text-slate-500">穿過無效位自動重置步數至 0</span>
-                </div>
-                <input id="useResetToggle" type="checkbox" checked class="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />
-              </label>
-
-              <label class="flex items-center justify-between cursor-pointer">
-                <div>
-                  <span class="text-xs text-slate-200 font-medium block">寬鬆模式 (允許 E 與 R 同日)</span>
-                  <span class="text-[10px] text-slate-500">適用於 TERE / S陽TERE 組合</span>
-                </div>
-                <input id="isLooseToggle" type="checkbox" checked class="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />
-              </label>
-            </div>
-
-            <div class="pt-2 border-t border-borderDark">
-              <div class="flex items-center justify-between mb-1">
-                <label for="fixedSupInput" class="text-xs font-medium text-slate-300">黑白DE: 入市前支持價位</label>
-                <button id="autoSupBtn" class="text-[10px] text-skyAccent hover:underline">自動估算</button>
-              </div>
-              <input id="fixedSupInput" type="number" value="50.00" step="0.05" min="0" class="w-full bg-obsidian border border-borderDark rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-skyAccent" />
-            </div>
-          </div>
-
-          <!-- 視覺與提示開關 -->
-          <div class="space-y-2 pt-2 border-t border-borderDark">
-            <span class="block text-[11px] font-semibold text-slate-400">視覺與提示</span>
-            <label class="flex items-center justify-between cursor-pointer">
-              <span class="text-xs text-slate-200">顯示狀態面板</span>
-              <input id="showTableToggle" type="checkbox" checked class="w-4 h-4 accent-sky-500 rounded cursor-pointer" />
-            </label>
-            <label class="flex items-center justify-between cursor-pointer">
-              <span class="text-xs text-slate-200">標示起點(灰)與達成步數(綠)</span>
-              <input id="showBgToggle" type="checkbox" checked class="w-4 h-4 accent-sky-500 rounded cursor-pointer" />
-            </label>
-          </div>
-        </aside>
-
-        <!-- 右側主圖表與 Alert Log -->
-        <div class="flex-1 min-w-0 w-full flex flex-col gap-4">
-          <!-- 股票資訊與工具列 -->
-          <div class="bg-surface border border-borderDark rounded-2xl px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-3 flex-wrap">
-              <button id="toggleChartSidebarBtn" class="px-2.5 py-1.5 rounded-lg bg-obsidian hover:bg-slate-800 border border-borderDark text-xs text-slate-300" title="展開/收合參數側邊欄">⚙ 參數</button>
-              <div>
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span id="hdrSymbol" class="text-base sm:text-lg font-extrabold font-mono text-white">0700.HK</span>
-                  <span id="hdrName" class="text-sm font-semibold text-slate-300">騰訊控股</span>
-                  <span id="hdrSector" class="px-2 py-0.5 text-[10px] font-medium rounded-full bg-slate-800 text-slate-300">科技</span>
-                  <span id="dataSourceBadge" class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-500/15 text-amberAccent border border-amber-500/30">模擬數據</span>
-                </div>
-                <div class="flex items-center gap-3 mt-0.5 text-xs">
-                  <span id="hdrPrice" class="font-mono font-bold text-base text-white">--</span>
-                  <span id="hdrChange" class="font-mono font-semibold">--</span>
-                  <span id="hdrDate" class="text-slate-400 text-[11px]">更新: --</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="flex items-center gap-2 flex-wrap">
-              <button id="chartToggleWatchBtn" class="px-3 py-1.5 rounded-xl bg-obsidian hover:bg-slate-800 border border-borderDark text-xs font-semibold text-amberAccent transition">☆ 加入自選</button>
-              <div class="flex items-center bg-obsidian rounded-xl p-0.5 border border-borderDark">
-                <button data-range="65" class="range-btn px-2.5 py-1 text-xs rounded-lg text-slate-400 hover:text-white transition">3M</button>
-                <button data-range="130" class="range-btn px-2.5 py-1 text-xs rounded-lg bg-surfaceAlt text-white font-semibold transition">6M</button>
-                <button data-range="250" class="range-btn px-2.5 py-1 text-xs rounded-lg text-slate-400 hover:text-white transition">1Y</button>
-                <button data-range="9999" class="range-btn px-2.5 py-1 text-xs rounded-lg text-slate-400 hover:text-white transition">ALL</button>
-              </div>
-              <div class="flex items-center gap-1">
-                <button id="zoomInBtn" class="px-2 py-1.5 rounded-lg bg-obsidian hover:bg-slate-800 border border-borderDark text-slate-300 text-xs" title="放大">＋</button>
-                <button id="zoomOutBtn" class="px-2 py-1.5 rounded-lg bg-obsidian hover:bg-slate-800 border border-borderDark text-slate-300 text-xs" title="縮小">－</button>
-                <button id="resetZoomBtn" class="px-2.5 py-1.5 rounded-lg bg-obsidian hover:bg-slate-800 border border-borderDark text-slate-300 text-xs">重置</button>
-                <button id="refreshStockBtn" class="px-2.5 py-1.5 rounded-lg bg-obsidian hover:bg-slate-800 border border-borderDark text-skyAccent text-xs" title="重新載入">↻</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- 互動式 K 線圖畫布卡片 (支援拖放 CSV) -->
-          <div id="chartDropZone" class="relative bg-surface border border-borderDark rounded-2xl overflow-hidden flex flex-col">
-            <!-- 載入中遮罩 -->
-            <div id="chartLoadingOverlay" class="hidden absolute inset-0 z-30 bg-obsidian/80 backdrop-blur-sm flex items-center justify-center">
-              <div class="flex flex-col items-center gap-2">
-                <div class="w-8 h-8 border-2 border-skyAccent border-t-transparent rounded-full animate-spin"></div>
-                <span class="text-xs text-slate-300">正在載入港股歷史數據...</span>
-              </div>
-            </div>
-
-            <!-- 頂部 OHLCV 數據列 HUD -->
-            <div id="chartOhlcvHud" class="bg-obsidian/70 border-b border-borderDark px-4 py-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-mono text-slate-300">
-              <span class="text-slate-400">懸停 K 線以檢視 OHLCV 與狀態機數值</span>
-            </div>
-
-            <!-- 浮動 TradingView 狀態面板 -->
-            <div id="statusOverlayPanel" class="absolute top-11 left-3 z-10 bg-obsidian/90 backdrop-blur-md border border-borderDark rounded-xl p-3 shadow-2xl min-w-[215px]">
-              <div class="flex items-center justify-between border-b border-borderDark pb-1.5 mb-2">
-                <span class="text-[11px] font-bold text-white">Sky Sir 狀態面板</span>
-                <span id="ovStatusBadge" class="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-slate-700 text-slate-200">--</span>
-              </div>
-              <div class="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
-                <span class="text-slate-400">組合 / 方向</span>
-                <span id="ovCombo" class="text-right font-semibold text-white">--</span>
-                <span class="text-slate-400">目前步數</span>
-                <span id="ovStep" class="text-right font-mono font-bold text-skyAccent">--</span>
-                <span class="text-slate-400">EP 自動提示位</span>
-                <span id="ovEp" class="text-right font-mono font-semibold text-amberAccent">--</span>
-                <span class="text-slate-400">Reset 重數位</span>
-                <span id="ovReset" class="text-right font-mono font-semibold text-bear">--</span>
-                <span class="text-slate-400">區間最高 (TH)</span>
-                <span id="ovTrackHigh" class="text-right font-mono text-slate-200">--</span>
-                <span class="text-slate-400">區間最低 (TL)</span>
-                <span id="ovTrackLow" class="text-right font-mono text-slate-200">--</span>
-              </div>
-            </div>
-
-            <!-- 十字準星懸停卡片 -->
-            <div id="chartTooltip" class="hidden absolute z-20 pointer-events-none bg-obsidian/95 border border-borderDark rounded-xl px-3 py-2 text-[11px] shadow-2xl min-w-[185px]"></div>
-
-            <!-- HTML5 Canvas 容器 -->
-            <div id="canvasWrapper" class="relative w-full h-[460px] sm:h-[520px]">
-              <canvas id="candlestickCanvas" class="block w-full h-full cursor-crosshair"></canvas>
-            </div>
-
-            <!-- 圖例列 -->
-            <div class="bg-obsidian/80 border-t border-borderDark px-4 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400">
-              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-bull inline-block"></span>陽燭</span>
-              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-bear inline-block"></span>陰燭</span>
-              <span class="flex items-center gap-1.5"><span class="w-4 h-0.5 border-t-2 border-dashed border-amberAccent inline-block"></span>EP 提示位</span>
-              <span class="flex items-center gap-1.5"><span class="w-4 h-0.5 border-t-2 border-dashed border-bear inline-block"></span>Reset 重數位</span>
-              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-slate-500/40 inline-block"></span>起點(灰)</span>
-              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-500/35 inline-block"></span>步數達成(綠)</span>
-              <span class="ml-auto hidden md:inline text-slate-500">滾輪縮放 · 拖曳平移 · 支援直接拖放 CSV 檔案</span>
-            </div>
-          </div>
-
-          <!-- 底部提示紀錄表 (Alert Log) -->
-          <div class="bg-surface border border-borderDark rounded-2xl overflow-hidden">
-            <div class="px-4 py-3 border-b border-borderDark flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <h3 class="text-xs sm:text-sm font-bold text-white">組合提示與狀態機紀錄 (Alert Log)</h3>
-                <span id="alertLogCount" class="text-[11px] px-2 py-0.5 rounded-full bg-obsidian text-slate-300 font-mono">0 筆</span>
-              </div>
-              <span class="text-[11px] text-slate-400 hidden sm:inline">記錄時光機起點後每次步數推進與穿位重數</span>
-            </div>
-            <div class="max-h-56 overflow-y-auto overflow-x-auto">
-              <table class="w-full text-left border-collapse text-xs">
-                <thead class="bg-obsidian/80 text-slate-400 sticky top-0">
-                  <tr>
-                    <th class="py-2.5 px-4 font-medium">日期</th>
-                    <th class="py-2.5 px-3 font-medium">事件標籤</th>
-                    <th class="py-2.5 px-3 font-medium">步數</th>
-                    <th class="py-2.5 px-3 font-medium text-right">收市價</th>
-                    <th class="py-2.5 px-3 font-medium text-right">EP 提示位</th>
-                    <th class="py-2.5 px-3 font-medium text-right">Reset 位</th>
-                    <th class="py-2.5 px-4 font-medium">提示訊息</th>
-                  </tr>
-                </thead>
-                <tbody id="alertLogBody" class="divide-y divide-borderDark/60"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ================================================================= -->
-    <!-- 頁面 3: 全港股掃描器 (HKEX Scanner) -->
+    <!-- 頁面 3: 港股通掃描器 (HKEX Scanner) -->
     <!-- ================================================================= -->
     <section id="view-scanner" class="view-section view-fade hidden space-y-4">
       <div class="bg-surface border border-borderDark rounded-2xl p-4 sm:p-5 space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 class="text-lg font-extrabold text-white flex items-center gap-2">
-              <span>🔍 全港上市股票掃描器 (HKEX Scanner)</span>
+            <h2 class="text-lg font-extrabold text-white flex items-center gap-2 flex-wrap">
+              <span>🔍 港股通掃描器 (HKEX Scanner)</span>
               <span id="scannerComboPill" class="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amberAccent border border-amber-500/30 font-bold">S陽TERE</span>
+              <span id="scannerCloudPill" class="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-bull border border-emerald-500/30 font-semibold">雲端自動同步</span>
             </h2>
-            <p class="text-xs text-slate-400 mt-0.5">內建 52 隻涵蓋 7 大板塊之熱門港股，亦可加入任意 4–5 位港股代號進行即時掃描與 CSV 報表匯出。</p>
+            <p class="text-xs text-slate-400 mt-0.5">支援 550+ 隻港股通成份股即時搜尋、成交額過濾、近 5 日觸發篩選、多欄排序與 UTF-8 CSV 匯出。</p>
           </div>
           <div class="flex items-center gap-2 flex-wrap">
-            <button id="runBatchScanBtn" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm transition shadow-lg shadow-emerald-500/20">▶ 重新掃描全港股</button>
-            <button id="exportScanCsvBtn" class="px-3.5 py-2 rounded-xl bg-obsidian hover:bg-slate-800 border border-borderDark text-slate-200 font-semibold text-xs sm:text-sm transition">⬇ 匯出 CSV 報表</button>
+            <button id="scanReloadCloudBtn" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm transition shadow-lg shadow-emerald-500/20">↻ 重新載入雲端掃描</button>
+            <button id="runBatchScanBtn" class="px-3.5 py-2 rounded-xl bg-surfaceAlt hover:bg-slate-800 border border-borderDark text-slate-200 font-semibold text-xs sm:text-sm transition">▶ 本地重掃</button>
+            <button id="exportScanCsvBtn" class="px-3.5 py-2 rounded-xl bg-obsidian hover:bg-slate-800 border border-borderDark text-slate-200 font-semibold text-xs sm:text-sm transition">⬇ 匯出 CSV</button>
           </div>
         </div>
 
-        <!-- 加入自訂港股代號至掃描清單 -->
+        <!-- 搜尋、成交額過濾、組合切換與自訂代號 -->
         <div class="grid grid-cols-1 md:grid-cols-12 gap-2.5">
-          <div class="md:col-span-4 relative">
-            <input id="scanSearchInput" type="text" placeholder="搜尋股票代號或名稱..." class="w-full bg-obsidian border border-borderDark rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-skyAccent" />
+          <div class="md:col-span-3 relative">
+            <input id="scanSearchInput" type="text" placeholder="搜尋代號或中文名 (如 1658、郵儲、騰訊)..." class="w-full bg-obsidian border border-borderDark rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-skyAccent" />
+          </div>
+          <div class="md:col-span-2">
+            <select id="scanTurnoverSelect" class="w-full bg-obsidian border border-borderDark rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-skyAccent cursor-pointer">
+              <option value="0">全部成交額</option>
+              <option value="10">成交額 &gt; 1,000萬</option>
+              <option value="50">成交額 &gt; 5,000萬</option>
+              <option value="100">成交額 &gt; 1億</option>
+            </select>
           </div>
           <div class="md:col-span-2">
             <select id="scanSectorSelect" class="w-full bg-obsidian border border-borderDark rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-skyAccent cursor-pointer">
               <option value="ALL">全部板塊</option>
+              <option value="港股通">港股通</option>
               <option value="科技">科技</option>
               <option value="金融">金融</option>
               <option value="地產">地產</option>
@@ -755,9 +158,9 @@
               <option value="黑白DE">組合: 黑白DE</option>
             </select>
           </div>
-          <div class="md:col-span-4 flex gap-1.5">
-            <input id="scanAddTickerInput" type="text" placeholder="加入任意港股代號 (如 0012、1929)" class="flex-1 bg-obsidian border border-borderDark rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-skyAccent" />
-            <button id="scanAddTickerBtn" class="px-3.5 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs transition shrink-0">＋ 加入掃描</button>
+          <div class="md:col-span-3 flex gap-1.5">
+            <input id="scanAddTickerInput" type="text" placeholder="加入港股代號 (如 0012)" class="flex-1 bg-obsidian border border-borderDark rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-skyAccent" />
+            <button id="scanAddTickerBtn" class="px-3 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs transition shrink-0">＋ 加入</button>
           </div>
         </div>
 
@@ -776,9 +179,10 @@
         <div class="flex items-center gap-1.5 flex-wrap">
           <button data-filter="ALL" class="scan-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-surfaceAlt text-white border border-skyAccent">全部 (<span id="cntAll">0</span>)</button>
           <button data-filter="COMPLETED" class="scan-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-obsidian text-bull border border-borderDark hover:border-emerald-500/40">已達成 (<span id="cntCompleted">0</span>)</button>
-          <button data-filter="ACTIVE" class="scan-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-obsidian text-skyAccent border border-borderDark hover:border-sky-500/40">進行中 (<span id="cntActive">0</span>)</button>
-          <button data-filter="RESET" class="scan-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-obsidian text-bear border border-borderDark hover:border-rose-500/40">剛重數 (<span id="cntReset">0</span>)</button>
-          <button data-filter="IDLE" class="scan-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-obsidian text-slate-400 border border-borderDark hover:border-slate-500">未開始 (<span id="cntIdle">0</span>)</button>
+          <button data-filter="ACTIVE" class="scan-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-obsidian text-skyAccent border border-borderDark hover:border-sky-500/40">進行中 Step≥1 (<span id="cntActive">0</span>)</button>
+          <button data-filter="RECENT5" class="scan-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-obsidian text-amberAccent border border-borderDark hover:border-amber-500/40">只看近5日觸發 (<span id="cntRecent5">0</span>)</button>
+          <span class="hidden" id="cntReset">0</span>
+          <span class="hidden" id="cntIdle">0</span>
         </div>
       </div>
 
@@ -790,13 +194,13 @@
               <tr>
                 <th data-sort="symbol" class="sort-th py-3 px-4 font-semibold cursor-pointer hover:text-white select-none whitespace-nowrap">代號 ↕</th>
                 <th data-sort="name" class="sort-th py-3 px-3 font-semibold cursor-pointer hover:text-white select-none whitespace-nowrap">名稱 ↕</th>
-                <th data-sort="sector" class="sort-th py-3 px-3 font-semibold cursor-pointer hover:text-white select-none whitespace-nowrap">板塊 ↕</th>
                 <th data-sort="price" class="sort-th py-3 px-3 font-semibold text-right cursor-pointer hover:text-white select-none whitespace-nowrap">現價 ↕</th>
-                <th data-sort="changePct" class="sort-th py-3 px-3 font-semibold text-right cursor-pointer hover:text-white select-none whitespace-nowrap">升跌幅 ↕</th>
-                <th data-sort="step" class="sort-th py-3 px-3 font-semibold text-center cursor-pointer hover:text-white select-none whitespace-nowrap">組合進度 ↕</th>
+                <th data-sort="changePct" class="sort-th py-3 px-3 font-semibold text-right cursor-pointer hover:text-white select-none whitespace-nowrap">漲跌幅% ↕</th>
+                <th data-sort="turnoverM" class="sort-th py-3 px-3 font-semibold text-right cursor-pointer hover:text-white select-none whitespace-nowrap">成交額 (HK$M) ↕</th>
+                <th data-sort="step" class="sort-th py-3 px-3 font-semibold text-center cursor-pointer hover:text-white select-none whitespace-nowrap">步數進度 ↕</th>
                 <th data-sort="epLevel" class="sort-th py-3 px-3 font-semibold text-right cursor-pointer hover:text-white select-none whitespace-nowrap">EP 觸發價 ↕</th>
-                <th data-sort="resetLevel" class="sort-th py-3 px-3 font-semibold text-right cursor-pointer hover:text-white select-none whitespace-nowrap">重數止損價 ↕</th>
-                <th data-sort="distEpPct" class="sort-th py-3 px-3 font-semibold text-right cursor-pointer hover:text-white select-none whitespace-nowrap">距 EP % ↕</th>
+                <th data-sort="resetLevel" class="sort-th py-3 px-3 font-semibold text-right cursor-pointer hover:text-white select-none whitespace-nowrap">Reset 止損 ↕</th>
+                <th data-sort="lastEventDate" class="sort-th py-3 px-3 font-semibold text-center cursor-pointer hover:text-white select-none whitespace-nowrap">最後事件日 ↕</th>
                 <th data-sort="statusOrder" class="sort-th py-3 px-3 font-semibold cursor-pointer hover:text-white select-none whitespace-nowrap">狀態 ↕</th>
                 <th class="py-3 px-4 font-semibold text-center whitespace-nowrap">操作</th>
               </tr>
@@ -804,1378 +208,43 @@
             <tbody id="scannerTableBody" class="divide-y divide-borderDark/60"></tbody>
           </table>
         </div>
+        <!-- 分頁控制列 (50 筆/頁) -->
+        <div id="scanPaginationBar" class="px-4 py-3 bg-obsidian/70 border-t border-borderDark flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+          <span id="scanPageInfo">顯示第 0 - 0 筆，共 0 筆</span>
+          <div class="flex items-center gap-1.5">
+            <button id="scanPrevPageBtn" class="px-3 py-1.5 rounded-lg bg-surface hover:bg-surfaceAlt border border-borderDark text-slate-200 disabled:opacity-40 transition">← 上一頁</button>
+            <span id="scanPageNumLabel" class="px-2.5 py-1 font-mono font-bold text-white">1 / 1</span>
+            <button id="scanNextPageBtn" class="px-3 py-1.5 rounded-lg bg-surface hover:bg-surfaceAlt border border-borderDark text-slate-200 disabled:opacity-40 transition">下一頁 →</button>
+          </div>
+        </div>
       </div>
     </section>
-
-    <!-- ================================================================= -->
-    <!-- 頁面 4: 自選清單 (Watchlist — localStorage 持久化) -->
-    <!-- ================================================================= -->
-    <section id="view-watchlist" class="view-section view-fade hidden space-y-4">
-      <div class="bg-surface border border-borderDark rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 class="text-lg font-extrabold text-white">⭐ 我的港股自選清單 (Watchlist)</h2>
-          <p class="text-xs text-slate-400 mt-0.5">自動儲存於瀏覽器 <code class="text-skyAccent">localStorage</code>，可為每隻股票設定專屬備註與「黑白DE」自訂支持價位。</p>
-        </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <input id="watchAddInput" type="text" placeholder="輸入代號如 1810、3690" class="w-44 bg-obsidian border border-borderDark rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-skyAccent" />
-          <button id="watchAddBtn" class="px-3.5 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs transition">＋ 加入自選</button>
-          <button id="watchScanBtn" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-emerald-500/20">▶ 掃描自選清單</button>
-        </div>
-      </div>
-
-      <div id="watchlistGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
-    </section>
-
-    <!-- ================================================================= -->
-    <!-- 頁面 5: 組合攻略與部署 (Flash Cards & GitHub Pages Deploy) -->
-    <!-- ================================================================= -->
-    <section id="view-guide" class="view-section view-fade hidden space-y-6">
-      <!-- 區塊 A: 5 大組合 Flash Cards -->
-      <div class="space-y-3">
-        <div>
-          <h2 class="text-lg font-extrabold text-white">🃏 Sky Sir 5 大組合 Flash Cards</h2>
-          <p class="text-xs text-slate-400">點選任意 Flash Card 可直接套用該組並跳轉至圖表分析驗證。</p>
-        </div>
-        <div id="flashCardsGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
-      </div>
-
-      <!-- 區塊 B: 核心 Price Action Legos 積木詳解 -->
-      <div class="bg-surface border border-borderDark rounded-2xl p-5 space-y-4">
-        <h3 class="text-base font-bold text-white">🧱 核心 Price Action 積木定義 (Pine Script v6)</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 text-xs">
-          <div class="bg-obsidian border border-borderDark rounded-xl p-3.5 space-y-1.5">
-            <div class="font-bold text-skyAccent">TrueHigh / TrueLow</div>
-            <p class="text-slate-400 leading-relaxed">納入前一日收市價的真實高低點，避免裂口高開/低開遺漏波幅：<code class="text-slate-200 block mt-1">max(high, close[1]) / min(low, close[1])</code></p>
-          </div>
-          <div class="bg-obsidian border border-borderDark rounded-xl p-3.5 space-y-1.5">
-            <div class="font-bold text-amberAccent">OB (Outside Bar 穿頭破腳)</div>
-            <p class="text-slate-400 leading-relaxed">當日最高價高於昨日最高價，且當日最低價低於昨日最低價：<code class="text-slate-200 block mt-1">high &gt; high[1] and low &lt; low[1]</code></p>
-          </div>
-          <div class="bg-obsidian border border-borderDark rounded-xl p-3.5 space-y-1.5">
-            <div class="font-bold text-bull">Swing S / Swing R</div>
-            <p class="text-slate-400 leading-relaxed">波段支持點 S (<code class="text-slate-200">low[1] &lt;= low[2] &amp; low</code>) 與波段阻力點 R (<code class="text-slate-200">high[1] &gt;= high[2] &amp; high</code>)，於當日收市確認前一日高低點。</p>
-          </div>
-          <div class="bg-obsidian border border-borderDark rounded-xl p-3.5 space-y-1.5">
-            <div class="font-bold text-emerald-400">S陽 / R陰 確認訊號</div>
-            <p class="text-slate-400 leading-relaxed"><strong class="text-slate-200">S陽</strong>：陽燭且收市高於前一日高位；<strong class="text-slate-200">R陰</strong>：陰燭且收市低於前一日低位。</p>
-          </div>
-          <div class="bg-obsidian border border-borderDark rounded-xl p-3.5 space-y-1.5">
-            <div class="font-bold text-bear">穿底/穿頂重數 (Reset Mode)</div>
-            <p class="text-slate-400 leading-relaxed">向上組合若低位跌穿 <code class="text-rose-300">resetLevel</code>、向下組合若高位升穿 <code class="text-rose-300">resetLevel</code>，系統立即重置步數至 0 並發出提示。</p>
-          </div>
-          <div class="bg-obsidian border border-borderDark rounded-xl p-3.5 space-y-1.5">
-            <div class="font-bold text-indigo-400">寬鬆模式 (E 與 R 同日)</div>
-            <p class="text-slate-400 leading-relaxed">在 TERE 與 S陽TERE 中，若突破日同時出現 OB、Swing R 或明顯上影線，允許於同日直接由 E 推進至 R 步數。</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- 區塊 C: GitHub Pages 一鍵部署教學 -->
-      <div class="bg-surface border border-borderDark rounded-2xl p-5 space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 class="text-base font-bold text-white">🚀 GitHub Pages 免費部署指南 (單檔即上線)</h3>
-            <p class="text-xs text-slate-400 mt-0.5">本平台為 100% 獨立單檔 <code class="text-skyAccent">index.html</code>，無需後端伺服器或建置工具，3 分鐘即可發佈成公開網站。</p>
-          </div>
-          <button id="copyDeployGuideBtn" class="px-3.5 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs transition flex items-center gap-1.5">
-            <span>📋 複製部署步驟</span>
-          </button>
-        </div>
-
-        <ol class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5 text-xs">
-          <li class="bg-obsidian border border-borderDark rounded-xl p-4 space-y-1.5">
-            <span class="inline-block px-2 py-0.5 rounded bg-sky-500/15 text-skyAccent font-bold font-mono">STEP 1</span>
-            <h4 class="font-bold text-white">建立 GitHub 儲存庫</h4>
-            <p class="text-slate-400 leading-relaxed">登入 GitHub，點擊右上角 <strong>+ → New repository</strong>，命名如 <code class="text-slate-200">skysir-hkex-scanner</code>，選擇 Public。</p>
-          </li>
-          <li class="bg-obsidian border border-borderDark rounded-xl p-4 space-y-1.5">
-            <span class="inline-block px-2 py-0.5 rounded bg-sky-500/15 text-skyAccent font-bold font-mono">STEP 2</span>
-            <h4 class="font-bold text-white">上傳 index.html</h4>
-            <p class="text-slate-400 leading-relaxed">進入儲存庫，點擊 <strong>Add file → Upload files</strong>，將本檔案命名為 <code class="text-slate-200">index.html</code> 拖曳上傳並 Commit。</p>
-          </li>
-          <li class="bg-obsidian border border-borderDark rounded-xl p-4 space-y-1.5">
-            <span class="inline-block px-2 py-0.5 rounded bg-sky-500/15 text-skyAccent font-bold font-mono">STEP 3</span>
-            <h4 class="font-bold text-white">啟用 GitHub Pages</h4>
-            <p class="text-slate-400 leading-relaxed">前往 <strong>Settings → Pages</strong>，於 Branch 選擇 <code class="text-slate-200">main</code> 與 <code class="text-slate-200">/ (root)</code>，按 <strong>Save</strong>。</p>
-          </li>
-          <li class="bg-obsidian border border-borderDark rounded-xl p-4 space-y-1.5">
-            <span class="inline-block px-2 py-0.5 rounded bg-emerald-500/15 text-bull font-bold font-mono">STEP 4</span>
-            <h4 class="font-bold text-white">取得專屬網址 & 鎖定品牌</h4>
-            <p class="text-slate-400 leading-relaxed">透過 <code class="text-bull">https://你的帳號.github.io/skysir-hkex-scanner/</code> 瀏覽！亦可於「主題與品牌」按「複製客製化預設碼」貼回 <code class="text-skyAccent">DEFAULT_BRAND_CONFIG</code> 永久鎖定全站品牌配色。</p>
-          </li>
-        </ol>
-      </div>
-    </section>
-  </main>
-
-  <!-- 頁尾 -->
-  <footer class="border-t border-borderDark bg-surface/50 mt-8">
-    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
-      <span id="footerBrandText">Sky Sir Combo Engine · 全港上市股票掃描平台 (HKEX)</span>
-      <span id="footerDisclaimerText">© tvstudy202211 · 僅供技術分析教學與研究用途，不構成任何投資建議。</span>
-    </div>
-  </footer>
-
-  <!-- =================================================================== -->
-  <!-- 完整 JavaScript 引擎與網站控制邏輯 -->
-  <!-- =================================================================== -->
-  <script>
-    // =========================================================================
-    // 0. 網站品牌與主題預設值 (GitHub Pages 站長可直接修改此區塊永久生效)
-    //    在「主題與品牌」面板按「複製客製化預設碼」後，直接取代此物件即可！
-    // =========================================================================
-    const DEFAULT_BRAND_CONFIG = {
-      brandTitle: 'Sky Sir Combo Engine',
-      brandSubtitle: '全港上市股票掃描平台 (HKEX)',
-      logoBadge: 'SS',
-      footerText: '© tvstudy202211 · 僅供技術分析教學與研究用途，不構成任何投資建議。',
-      themeId: 'tv-dark',       // tv-dark | bloomberg-gold | hkex-emerald | minimal-light | cyber-neon | hk-classic
-      hkStyle: false,           // false: 美式綠升紅跌 | true: 港式紅升綠跌
-      colors: {
-        accent: '#2962ff',
-        bgMain: '#0d1117',
-        bgCard: '#161b22',
-        bull: '#26a69a',
-        bear: '#ef5350'
-      }
-    };
-
-    const BRAND_STORAGE_KEY = 'skysir_brand_theme_v1';
-
-    // 6 套精選金融主題預設
-    const THEME_PRESETS = [
-      {
-        id: 'tv-dark',
-        name: 'TradingView 深藍專業',
-        desc: '經典深藍灰專業盤面',
-        isLight: false,
-        hkStyle: false,
-        colors: { accent: '#2962ff', bgMain: '#0d1117', bgCard: '#161b22', bull: '#26a69a', bear: '#ef5350' }
-      },
-      {
-        id: 'bloomberg-gold',
-        name: 'Bloomberg 黑金旗艦',
-        desc: '黑金奢華機構終端機風格',
-        isLight: false,
-        hkStyle: false,
-        colors: { accent: '#f5b041', bgMain: '#0a0a0c', bgCard: '#141418', bull: '#2ecc71', bear: '#e74c3c' }
-      },
-      {
-        id: 'hkex-emerald',
-        name: 'HKEX 翡翠港股',
-        desc: '深邃森林翡翠港股主題',
-        isLight: false,
-        hkStyle: false,
-        colors: { accent: '#10b981', bgMain: '#0b1412', bgCard: '#12201d', bull: '#34d399', bear: '#fb7185' }
-      },
-      {
-        id: 'minimal-light',
-        name: '極簡明亮日間',
-        desc: '高對比清爽白底日間閱讀',
-        isLight: true,
-        hkStyle: false,
-        colors: { accent: '#1d4ed8', bgMain: '#f8fafc', bgCard: '#ffffff', bull: '#16a34a', bear: '#dc2626' }
-      },
-      {
-        id: 'cyber-neon',
-        name: '賽博霓虹暗夜',
-        desc: '未來感深紫霓虹青配色',
-        isLight: false,
-        hkStyle: false,
-        colors: { accent: '#06b6d4', bgMain: '#0b0716', bgCard: '#151026', bull: '#22c55e', bear: '#f43f5e' }
-      },
-      {
-        id: 'hk-classic',
-        name: '經典港股紅升綠跌',
-        desc: '傳統港股/中式紅升綠跌慣例',
-        isLight: false,
-        hkStyle: true,
-        colors: { accent: '#38bdf8', bgMain: '#0f141e', bgCard: '#18202f', bull: '#ef4444', bear: '#10b981' }
-      }
-    ];
-
-    // =========================================================================
-    // 1. 內建 52 隻全港上市熱門股票資料庫 (涵蓋 7 大板塊)
-    // =========================================================================
-    const DEFAULT_HK_STOCKS = [
-      // 科技
-      { symbol: '0700.HK', name: '騰訊控股', sector: '科技', base: 428.0, vol: 0.022 },
-      { symbol: '9988.HK', name: '阿里巴巴-W', sector: '科技', base: 98.5, vol: 0.028 },
-      { symbol: '3690.HK', name: '美團-W', sector: '科技', base: 168.0, vol: 0.033 },
-      { symbol: '1810.HK', name: '小米集團-W', sector: '科技', base: 28.4, vol: 0.029 },
-      { symbol: '9618.HK', name: '京東集團-SW', sector: '科技', base: 146.5, vol: 0.032 },
-      { symbol: '9888.HK', name: '百度集團-SW', sector: '科技', base: 92.4, vol: 0.030 },
-      { symbol: '9999.HK', name: '網易-S', sector: '科技', base: 142.0, vol: 0.027 },
-      { symbol: '1024.HK', name: '快手-W', sector: '科技', base: 51.8, vol: 0.035 },
-      { symbol: '0981.HK', name: '中芯國際', sector: '科技', base: 27.9, vol: 0.036 },
-      { symbol: '2382.HK', name: '舜宇光學科技', sector: '科技', base: 56.4, vol: 0.034 },
-      { symbol: '0992.HK', name: '聯想集團', sector: '科技', base: 10.6, vol: 0.029 },
-      { symbol: '0268.HK', name: '金蝶國際', sector: '科技', base: 8.95, vol: 0.037 },
-      // 金融
-      { symbol: '0005.HK', name: '匯豐控股', sector: '金融', base: 74.2, vol: 0.014 },
-      { symbol: '0388.HK', name: '香港交易所', sector: '金融', base: 318.0, vol: 0.024 },
-      { symbol: '1299.HK', name: '友邦保險', sector: '金融', base: 62.5, vol: 0.021 },
-      { symbol: '2318.HK', name: '中國平安', sector: '金融', base: 47.6, vol: 0.025 },
-      { symbol: '0939.HK', name: '建設銀行', sector: '金融', base: 6.15, vol: 0.015 },
-      { symbol: '1398.HK', name: '工商銀行', sector: '金融', base: 4.82, vol: 0.014 },
-      { symbol: '3988.HK', name: '中國銀行', sector: '金融', base: 3.82, vol: 0.014 },
-      { symbol: '0011.HK', name: '恒生銀行', sector: '金融', base: 96.8, vol: 0.017 },
-      { symbol: '2388.HK', name: '中銀香港', sector: '金融', base: 25.4, vol: 0.016 },
-      { symbol: '2628.HK', name: '中國人壽', sector: '金融', base: 15.8, vol: 0.026 },
-      { symbol: '3968.HK', name: '招商銀行', sector: '金融', base: 39.2, vol: 0.024 },
-      // 地產
-      { symbol: '0016.HK', name: '新鴻基地產', sector: '地產', base: 79.5, vol: 0.019 },
-      { symbol: '1113.HK', name: '長實集團', sector: '地產', base: 32.9, vol: 0.018 },
-      { symbol: '0823.HK', name: '領展房產基金', sector: '地產', base: 36.8, vol: 0.017 },
-      { symbol: '0012.HK', name: '恒基地產', sector: '地產', base: 24.8, vol: 0.019 },
-      { symbol: '0688.HK', name: '中國海外發展', sector: '地產', base: 14.3, vol: 0.027 },
-      { symbol: '1109.HK', name: '華潤置地', sector: '地產', base: 25.6, vol: 0.028 },
-      { symbol: '1997.HK', name: '九龍倉置業', sector: '地產', base: 22.1, vol: 0.022 },
-      // 公用
-      { symbol: '0941.HK', name: '中國移動', sector: '公用', base: 75.8, vol: 0.013 },
-      { symbol: '0002.HK', name: '中電控股', sector: '公用', base: 67.4, vol: 0.012 },
-      { symbol: '0003.HK', name: '香港中華煤氣', sector: '公用', base: 6.25, vol: 0.013 },
-      { symbol: '0006.HK', name: '電能實業', sector: '公用', base: 51.4, vol: 0.013 },
-      { symbol: '0066.HK', name: '港鐵公司', sector: '公用', base: 27.6, vol: 0.014 },
-      { symbol: '1038.HK', name: '長江基建集團', sector: '公用', base: 54.2, vol: 0.014 },
-      // 消費與汽車
-      { symbol: '1211.HK', name: '比亞迪股份', sector: '消費', base: 276.0, vol: 0.026 },
-      { symbol: '2015.HK', name: '理想汽車-W', sector: '消費', base: 98.2, vol: 0.038 },
-      { symbol: '9868.HK', name: '小鵬汽車-W', sector: '消費', base: 49.5, vol: 0.042 },
-      { symbol: '0175.HK', name: '吉利汽車', sector: '消費', base: 14.2, vol: 0.031 },
-      { symbol: '0027.HK', name: '銀河娛樂', sector: '消費', base: 36.2, vol: 0.027 },
-      { symbol: '1928.HK', name: '金沙中國', sector: '消費', base: 19.6, vol: 0.028 },
-      { symbol: '2319.HK', name: '蒙牛乳業', sector: '消費', base: 17.4, vol: 0.027 },
-      { symbol: '9633.HK', name: '農夫山泉', sector: '消費', base: 33.8, vol: 0.025 },
-      { symbol: '2020.HK', name: '安踏體育', sector: '消費', base: 84.5, vol: 0.027 },
-      { symbol: '0669.HK', name: '創科實業', sector: '消費', base: 108.5, vol: 0.024 },
-      // 能源與資源
-      { symbol: '0883.HK', name: '中國海洋石油', sector: '能源', base: 19.4, vol: 0.022 },
-      { symbol: '0857.HK', name: '中國石油股份', sector: '能源', base: 6.12, vol: 0.021 },
-      { symbol: '0386.HK', name: '中國石油化工', sector: '能源', base: 4.58, vol: 0.017 },
-      { symbol: '1088.HK', name: '中國神華', sector: '能源', base: 33.4, vol: 0.019 },
-      // ETF
-      { symbol: '2800.HK', name: '盈富基金', sector: 'ETF', base: 21.4, vol: 0.015 },
-      { symbol: '3033.HK', name: '南方恒生科技', sector: 'ETF', base: 4.68, vol: 0.026 }
-    ];
-
-    const COMBO_META = {
-      'S陽TERE': {
-        isUp: true,
-        maxStep: 5,
-        steps: ['S + S陽', 'T (回調定EP)', 'E (首次突破)', 'R (阻力/回吐)', 'E (再突破達成)'],
-        desc: '向上 5 步旗艦組合：先確認波段底 S 與 S陽定 Reset，再經 T→E→R→E 完成結構突破。',
-        tagColor: 'emerald'
-      },
-      'TERE': {
-        isUp: true,
-        maxStep: 4,
-        steps: ['T (回調定EP/Reset)', 'E (首次突破)', 'R (阻力/回吐)', 'E (再突破達成)'],
-        desc: '向上 4 步動能組合：省略尋底步驟，直接以回調 T 定出 EP 與 Reset，突破後再經 R→E 確認。',
-        tagColor: 'sky'
-      },
-      'S陽TE': {
-        isUp: true,
-        maxStep: 3,
-        steps: ['S + S陽 (定Reset)', 'T (回調定EP)', 'E (突破達成)'],
-        desc: '向上 3 步快速反轉組合：波段支持 S 出現 S陽確認後，一次回調 T 並突破 EP 即達成。',
-        tagColor: 'emerald'
-      },
-      'R陰E': {
-        isUp: false,
-        maxStep: 2,
-        steps: ['R + R陰 (定Reset/EP)', 'E (跌穿EP達成)'],
-        desc: '向下 2 步沽壓組合：波段阻力 R 出現 R陰確認並鎖定 EP，收市跌穿 EP 即達成。',
-        tagColor: 'rose'
-      },
-      '黑白DE': {
-        isUp: false,
-        maxStep: 3,
-        steps: ['黑白 (陰陽形態)', 'D (跌勢定EP)', 'E (跌穿EP達成)'],
-        desc: '向下 3 步破位組合：配合「入市前支持價位」，出現黑白形態後由 D 確立跌勢，E 跌穿達成。',
-        tagColor: 'rose'
-      }
-    };
-
-    const WATCHLIST_STORAGE_KEY = 'skysir_hkex_watchlist_v2';
-    const DEFAULT_WATCHLIST = [
-      { symbol: '0700.HK', note: '核心科網龍頭，觀察 S陽TERE 突破', fixedSup: '' },
-      { symbol: '9988.HK', note: '關注回調 T 位收斂', fixedSup: '' },
-      { symbol: '0005.HK', note: '高息藍籌穩健趨勢', fixedSup: '' },
-      { symbol: '0388.HK', note: '港股成交量受惠指標', fixedSup: '' },
-      { symbol: '1299.HK', note: '保險板塊反轉觀察', fixedSup: '' },
-      { symbol: '2800.HK', note: '恒指大市方向基準', fixedSup: '' }
-    ];
-
-    // =========================================================================
-    // 2. 全域狀態管理
-    // =========================================================================
-    const appState = {
-      activeView: 'dashboard', // dashboard | chart | scanner | watchlist | guide
-      stocks: [...DEFAULT_HK_STOCKS],
-      watchlist: [],
-      currentSymbol: '0700.HK',
-      currentName: '騰訊控股',
-      currentSector: '科技',
-      dataSource: 'demo', // demo | live
-      activeSourceTag: '模擬數據',
-      bars: [],
-      engineResult: null,
-      dataCache: new Map(),
-
-      settings: {
-        comboType: 'S陽TERE',
-        startDate: '2026-08-01',
-        useReset: true,
-        isLoose: true,
-        fixedSup: 50.0,
-        showTable: true,
-        showBg: true
-      },
-
-      chartView: {
-        startIdx: 0,
-        endIdx: 0,
-        isDragging: false,
-        dragStartX: 0,
-        dragStartIdx: 0,
-        dragEndIdx: 0,
-        hoverIdx: -1,
-        hoverX: 0,
-        hoverY: 0
-      },
-
+<!-- ... existing code ... -->
       scanResults: [],
       scanFilter: 'ALL',
       scanSector: 'ALL',
+      scanTurnoverMin: 0,
       scanSearch: '',
       scanSortKey: 'statusOrder',
       scanSortAsc: false,
+      scanPage: 1,
+      scanPageSize: 50,
+      cloudScanData: null,
+      cloudLoaded: false,
 
       brandConfig: JSON.parse(JSON.stringify(DEFAULT_BRAND_CONFIG))
     };
-
-    // =========================================================================
-    // 2.5 品牌與主題引擎 (CSS 變數、日間模式、K 線圖與走勢圖動態同步)
-    // =========================================================================
-    function hexToRgbTuple(hex) {
-      const clean = (hex || '#000000').replace('#', '');
-      const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean.padEnd(6, '0');
-      const num = parseInt(full.slice(0, 6), 16);
-      return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
-    }
-
-    function rgbToHex(r, g, b) {
-      const clamp = v => Math.max(0, Math.min(255, Math.round(v)));
-      return '#' + [clamp(r), clamp(g), clamp(b)].map(v => v.toString(16).padStart(2, '0')).join('');
-    }
-
-    function isLightHex(hex) {
-      const [r, g, b] = hexToRgbTuple(hex);
-      const luma = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-      return luma > 0.62;
-    }
-
-    function shiftHex(hex, amount) {
-      const [r, g, b] = hexToRgbTuple(hex);
-      return rgbToHex(r + amount, g + amount, b + amount);
-    }
-
-    function getActiveThemePalette() {
-      const c = appState.brandConfig.colors;
-      const light = isLightHex(c.bgMain);
-      const bgCardAlt = light ? shiftHex(c.bgCard, -12) : shiftHex(c.bgCard, 12);
-      const borderColor = light ? '#cbd5e1' : shiftHex(c.bgCard, 24);
-      return {
-        isLight: light,
-        accent: c.accent,
-        bgMain: c.bgMain,
-        bgCard: c.bgCard,
-        bgCardAlt,
-        borderColor,
-        bull: c.bull,
-        bear: c.bear,
-        amber: '#f59e0b',
-        chartBg: light ? '#ffffff' : shiftHex(c.bgMain, 3),
-        chartGrid: light ? '#e2e8f0' : shiftHex(c.bgCard, 9),
-        chartGridV: light ? '#f1f5f9' : shiftHex(c.bgCard, 4),
-        chartAxisText: light ? '#475569' : '#7c8ba1',
-        chartStartLabel: light ? '#334155' : '#cbd5e1',
-        chartStartBand: light ? 'rgba(100, 116, 139, 0.14)' : 'rgba(148, 163, 184, 0.22)'
-      };
-    }
-
-    function loadBrandConfigFromStorage() {
-      try {
-        const raw = localStorage.getItem(BRAND_STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          appState.brandConfig = {
-            ...DEFAULT_BRAND_CONFIG,
-            ...parsed,
-            colors: { ...DEFAULT_BRAND_CONFIG.colors, ...(parsed.colors || {}) }
-          };
-          return;
-        }
-      } catch (e) {}
-      appState.brandConfig = JSON.parse(JSON.stringify(DEFAULT_BRAND_CONFIG));
-    }
-
-    function saveBrandConfigToStorage() {
-      try { localStorage.setItem(BRAND_STORAGE_KEY, JSON.stringify(appState.brandConfig)); } catch (e) {}
-    }
-
-    function applyBrandAndTheme(shouldRedraw = true) {
-      const cfg = appState.brandConfig;
-      const pal = getActiveThemePalette();
-      const root = document.documentElement;
-
-      // 1. 寫入 CSS 變數
-      const setVar = (name, hex) => {
-        const [r, g, b] = hexToRgbTuple(hex);
-        root.style.setProperty(`--${name}`, hex);
-        root.style.setProperty(`--${name}-rgb`, `${r} ${g} ${b}`);
-      };
-      setVar('bg-main', pal.bgMain);
-      setVar('bg-card', pal.bgCard);
-      setVar('bg-card-alt', pal.bgCardAlt);
-      setVar('border', pal.borderColor);
-      root.style.setProperty('--border-color', pal.borderColor);
-      setVar('accent', pal.accent);
-      setVar('bull', pal.bull);
-      setVar('bear', pal.bear);
-      setVar('amber', pal.amber);
-      root.style.setProperty('--text-primary', pal.isLight ? '#0f172a' : '#f1f5f9');
-
-      // 切換日間/夜間 class
-      root.classList.toggle('theme-light', pal.isLight);
-      root.classList.toggle('dark', !pal.isLight);
-
-      // 2. 更新所有品牌文字與瀏覽器標題
-      const title = cfg.brandTitle || DEFAULT_BRAND_CONFIG.brandTitle;
-      const sub = cfg.brandSubtitle || DEFAULT_BRAND_CONFIG.brandSubtitle;
-      const badge = cfg.logoBadge || DEFAULT_BRAND_CONFIG.logoBadge;
-      const footer = cfg.footerText || DEFAULT_BRAND_CONFIG.footerText;
-
-      document.title = `${title} — ${sub}`;
-      document.getElementById('brandTitleNav').textContent = title;
-      document.getElementById('brandSubtitleNav').textContent = sub;
-      document.getElementById('brandLogoBadge').textContent = badge;
-      document.getElementById('heroBrandTitle').textContent = title;
-      document.getElementById('heroBrandSubtitle').textContent = sub;
-      document.getElementById('footerBrandText').textContent = `${title} · ${sub}`;
-      document.getElementById('footerDisclaimerText').textContent = footer;
-
-      // 3. 同步客製化面板表單值
-      document.getElementById('cfgBrandTitle').value = cfg.brandTitle;
-      document.getElementById('cfgBrandSubtitle').value = cfg.brandSubtitle;
-      document.getElementById('cfgLogoBadge').value = cfg.logoBadge;
-      document.getElementById('cfgFooterText').value = cfg.footerText;
-
-      document.getElementById('pickAccent').value = cfg.colors.accent;
-      document.getElementById('hexAccent').textContent = cfg.colors.accent;
-      document.getElementById('pickBgMain').value = cfg.colors.bgMain;
-      document.getElementById('hexBgMain').textContent = cfg.colors.bgMain;
-      document.getElementById('pickBgCard').value = cfg.colors.bgCard;
-      document.getElementById('hexBgCard').textContent = cfg.colors.bgCard;
-      document.getElementById('pickBull').value = cfg.colors.bull;
-      document.getElementById('hexBull').textContent = cfg.colors.bull;
-      document.getElementById('pickBear').value = cfg.colors.bear;
-      document.getElementById('hexBear').textContent = cfg.colors.bear;
-
-      // 同步美式/港式升跌慣例按鈕狀態
-      const usBtn = document.getElementById('convUsBtn');
-      const hkBtn = document.getElementById('convHkBtn');
-      if (cfg.hkStyle) {
-        hkBtn.className = 'px-3 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-surfaceAlt text-white border border-skyAccent';
-        usBtn.className = 'px-3 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-white border border-transparent';
-      } else {
-        usBtn.className = 'px-3 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-surfaceAlt text-white border border-skyAccent';
-        hkBtn.className = 'px-3 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-white border border-transparent';
-      }
-
-      renderThemePresetCards();
-      saveBrandConfigToStorage();
-
-      if (shouldRedraw) {
-        renderChart();
-        if (appState.activeView === 'dashboard') renderDashboard();
-      }
-    }
-
-    function renderThemePresetCards() {
-      const grid = document.getElementById('themePresetGrid');
-      if (!grid) return;
-      const activeId = appState.brandConfig.themeId;
-      grid.innerHTML = THEME_PRESETS.map(p => {
-        const isActive = activeId === p.id;
-        return `
-          <button type="button" data-theme-preset="${p.id}" class="text-left p-3 rounded-xl border transition flex flex-col gap-2 ${isActive ? 'border-skyAccent bg-surfaceAlt shadow-md' : 'border-borderDark bg-obsidian/70 hover:border-slate-500'}">
-            <div class="flex items-center justify-between gap-1">
-              <span class="text-xs font-bold text-white truncate">${p.name}</span>
-              ${isActive ? '<span class="text-[10px] font-bold text-skyAccent">✓</span>' : ''}
-            </div>
-            <div class="flex items-center gap-1.5">
-              <span class="w-4 h-4 rounded-full border border-slate-500/40" style="background:${p.colors.bgMain}" title="背景"></span>
-              <span class="w-4 h-4 rounded-full border border-slate-500/40" style="background:${p.colors.bgCard}" title="卡片"></span>
-              <span class="w-4 h-4 rounded-full" style="background:${p.colors.accent}" title="主色"></span>
-              <span class="w-4 h-4 rounded-full" style="background:${p.colors.bull}" title="上升"></span>
-              <span class="w-4 h-4 rounded-full" style="background:${p.colors.bear}" title="下跌"></span>
-            </div>
-            <span class="text-[10px] text-slate-400 leading-tight">${p.desc}</span>
-          </button>
-        `;
-      }).join('');
-    }
-
-    function openThemeDrawer() {
-      document.getElementById('themeDrawerBackdrop').classList.remove('hidden');
-      document.getElementById('themeDrawer').classList.remove('translate-x-full');
-    }
-
-    function closeThemeDrawer() {
-      document.getElementById('themeDrawerBackdrop').classList.add('hidden');
-      document.getElementById('themeDrawer').classList.add('translate-x-full');
-    }
-
-    // =========================================================================
-    // 3. 工具函式 (Toast、港股代號標準化、確定性模擬、剪貼簿)
-    // =========================================================================
-    function showToast(msg, type = 'info') {
-      const container = document.getElementById('toastContainer');
-      const styles = {
-        info: 'bg-surface border-sky-500/40 text-slate-100',
-        success: 'bg-emerald-950/95 border-emerald-500/50 text-emerald-200',
-        warn: 'bg-amber-950/95 border-amber-500/50 text-amber-200',
-        error: 'bg-rose-950/95 border-rose-500/50 text-rose-200'
-      };
-      const el = document.createElement('div');
-      el.className = `pointer-events-auto px-3.5 py-2.5 rounded-xl border shadow-2xl text-xs leading-relaxed transition-all duration-300 ${styles[type] || styles.info}`;
-      el.textContent = msg;
-      container.appendChild(el);
-      setTimeout(() => {
-        el.style.opacity = '0';
-        el.style.transform = 'translateX(14px)';
-        setTimeout(() => el.remove(), 300);
-      }, 3400);
-    }
-
-    function normalizeHkSymbol(raw) {
-      const s = (raw || '').trim().toUpperCase().replace(/\.HK$/i, '');
-      const digits = s.replace(/\D/g, '');
-      if (!digits) return null;
-      let numStr = String(parseInt(digits, 10));
-      if (numStr.length <= 4) numStr = numStr.padStart(4, '0');
-      return `${numStr}.HK`;
-    }
-
-    function hashString(str) {
-      let h = 2166136261 >>> 0;
-      for (let i = 0; i < str.length; i++) {
-        h ^= str.charCodeAt(i);
-        h = Math.imul(h, 16777619);
-      }
-      return h >>> 0;
-    }
-
-    function mulberry32(seed) {
-      let a = seed >>> 0;
-      return function () {
-        a |= 0;
-        a = (a + 0x6D2B79F5) | 0;
-        let t = Math.imul(a ^ (a >>> 15), 1 | a);
-        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-      };
-    }
-
-    function formatPrice(val) {
-      if (val == null || isNaN(val)) return '--';
-      return val >= 10 ? val.toFixed(2) : val.toFixed(3);
-    }
-
-    function formatDateISO(d) {
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }
-
-    function copyTextFallback(text) {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      try {
-        document.execCommand('copy');
-        showToast('已複製 GitHub Pages 部署步驟至剪貼簿！', 'success');
-      } catch (e) {
-        showToast('複製失敗，請手動選取文字複製。', 'error');
-      }
-      document.body.removeChild(ta);
-    }
-
-    function getStockMeta(symbol) {
-      return appState.stocks.find(s => s.symbol === symbol) || {
-        symbol,
-        name: `港股 ${symbol.replace('.HK', '')}`,
-        sector: '其他',
-        base: 18 + (hashString(symbol) % 140),
-        vol: 0.026
-      };
-    }
-
-    function ensureStockInDatabase(symbol) {
-      let found = appState.stocks.find(s => s.symbol === symbol);
-      if (!found) {
-        found = getStockMeta(symbol);
-        appState.stocks.unshift(found);
-        populateChartStockSelect();
-      }
-      return found;
-    }
-
-    // =========================================================================
-    // 4. 數據引擎 (確定性模擬 / Yahoo Finance CORS Proxy / CSV 匯入)
-    // =========================================================================
-    function generateSimulatedHKData(symbol, numBars = 260) {
-      const meta = getStockMeta(symbol);
-      const seed = hashString(symbol + '_HKEX_2026_V2');
-      const rand = mulberry32(seed);
-      const basePrice = meta.base;
-      const vol = meta.vol;
-
-      // 生成截至 2026-11-19 的交易日 (排除週末)
-      const endDate = new Date(2026, 10, 19);
-      const dates = [];
-      const cur = new Date(endDate);
-      while (dates.length < numBars) {
-        if (cur.getDay() !== 0 && cur.getDay() !== 6) dates.push(new Date(cur));
-        cur.setDate(cur.getDate() - 1);
-      }
-      dates.reverse();
-
-      const bars = [];
-      let price = basePrice * (0.84 + rand() * 0.26);
-      const p1 = rand() * Math.PI * 2;
-      const p2 = rand() * Math.PI * 2;
-      const f1 = 0.042 + rand() * 0.032;
-      const f2 = 0.13 + rand() * 0.065;
-
-      for (let i = 0; i < dates.length; i++) {
-        const wave = Math.sin(i * f1 + p1) * vol * 0.30 + Math.cos(i * f2 + p2) * vol * 0.22;
-        const shock = (rand() - 0.495) * vol * 2.15;
-        const gap = (rand() - 0.5) * vol * 0.42;
-
-        const open = Math.max(0.1, price * (1 + gap));
-        const close = Math.max(0.1, open * (1 + wave + shock));
-        const bodyHi = Math.max(open, close);
-        const bodyLo = Math.min(open, close);
-        const high = bodyHi + bodyHi * (rand() * vol * 0.65);
-        const low = Math.max(0.05, bodyLo - bodyLo * (rand() * vol * 0.65));
-        const volume = Math.floor((1500000 + rand() * 16000000) * (1 + Math.abs(shock) * 16));
-
-        const dateStr = formatDateISO(dates[i]);
-        bars.push({
-          date: dateStr,
-          time: Date.parse(dateStr + 'T00:00:00+08:00'),
-          open: Number(open.toFixed(3)),
-          high: Number(high.toFixed(3)),
-          low: Number(low.toFixed(3)),
-          close: Number(close.toFixed(3)),
-          volume
-        });
-        price = close;
-      }
-      return bars;
-    }
-
-    async function fetchYahooViaProxy(symbol) {
-      const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1y&interval=1d`;
-      const proxies = [
-        url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-        url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
-      ];
-      for (const buildProxy of proxies) {
-        const controller = new AbortController();
-        const tid = setTimeout(() => controller.abort(), 5000);
-        try {
-          const res = await fetch(buildProxy(targetUrl), { signal: controller.signal });
-          clearTimeout(tid);
-          if (!res.ok) continue;
-          const json = await res.json();
-          const result = json?.chart?.result?.[0];
-          if (!result?.timestamp || !result?.indicators?.quote?.[0]) continue;
-          const ts = result.timestamp;
-          const q = result.indicators.quote[0];
-          const bars = [];
-          for (let i = 0; i < ts.length; i++) {
-            if (q.open[i] == null || q.high[i] == null || q.low[i] == null || q.close[i] == null) continue;
-            const dateStr = formatDateISO(new Date(ts[i] * 1000));
-            bars.push({
-              date: dateStr,
-              time: Date.parse(dateStr + 'T00:00:00+08:00'),
-              open: Number(q.open[i].toFixed(3)),
-              high: Number(q.high[i].toFixed(3)),
-              low: Number(q.low[i].toFixed(3)),
-              close: Number(q.close[i].toFixed(3)),
-              volume: q.volume?.[i] || 0
-            });
-          }
-          if (bars.length >= 20) return { bars, liveName: result.meta?.shortName || null };
-        } catch (e) {
-          clearTimeout(tid);
-        }
-      }
-      return null;
-    }
-
-    async function getStockBars(symbol, forceRefresh = false) {
-      const mode = appState.dataSource;
-      const cacheKey = `${symbol}__${mode}`;
-      if (!forceRefresh && appState.dataCache.has(cacheKey)) {
-        return appState.dataCache.get(cacheKey);
-      }
-
-      if (mode === 'live') {
-        const live = await fetchYahooViaProxy(symbol);
-        if (live) {
-          const payload = { bars: live.bars, sourceTag: '即時港股數據', liveName: live.liveName };
-          appState.dataCache.set(cacheKey, payload);
-          return payload;
-        }
-        const fallback = { bars: generateSimulatedHKData(symbol), sourceTag: '模擬 (自動回退)' };
-        appState.dataCache.set(cacheKey, fallback);
-        return fallback;
-      }
-
-      const sim = { bars: generateSimulatedHKData(symbol), sourceTag: '模擬數據' };
-      appState.dataCache.set(cacheKey, sim);
-      return sim;
-    }
-
-    function parseCSVToBars(csvText) {
-      const lines = csvText.trim().split(/\r?\n/).filter(l => l.trim().length > 0);
-      if (lines.length < 2) throw new Error('CSV 內容不足');
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/["']/g, ''));
-      const iDate = headers.findIndex(h => h === 'date' || h === 'time' || h === 'timestamp');
-      const iO = headers.findIndex(h => h === 'open');
-      const iH = headers.findIndex(h => h === 'high');
-      const iL = headers.findIndex(h => h === 'low');
-      const iC = headers.findIndex(h => h === 'close');
-      const iV = headers.findIndex(h => h.includes('vol'));
-
-      if ([iDate, iO, iH, iL, iC].some(idx => idx === -1)) {
-        throw new Error('缺少必要欄位 (Date/Time, Open, High, Low, Close)');
-      }
-
-      const bars = [];
-      for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(',').map(c => c.trim().replace(/["']/g, ''));
-        if (cols.length < 5) continue;
-        const rawD = cols[iDate];
-        let dateStr;
-        if (/^\d{9,13}$/.test(rawD)) {
-          const num = Number(rawD);
-          dateStr = formatDateISO(new Date(num > 1e11 ? num : num * 1000));
-        } else {
-          const d = new Date(rawD);
-          if (isNaN(d.getTime())) continue;
-          dateStr = formatDateISO(d);
-        }
-        const open = parseFloat(cols[iO]);
-        const high = parseFloat(cols[iH]);
-        const low = parseFloat(cols[iL]);
-        const close = parseFloat(cols[iC]);
-        const volume = iV !== -1 ? (parseFloat(cols[iV]) || 0) : 0;
-        if ([open, high, low, close].some(isNaN)) continue;
-        bars.push({ date: dateStr, time: Date.parse(dateStr + 'T00:00:00+08:00'), open, high, low, close, volume });
-      }
-      bars.sort((a, b) => a.time - b.time);
-      if (bars.length < 5) throw new Error('有效 K 線不足 5 筆');
-      return bars;
-    }
-
-    // =========================================================================
-    // 5. 核心 Pine Script v6 狀態機引擎 (Sky Sir Combo Alert Engine)
-    // =========================================================================
-    function runComboEngine(bars, settings) {
-      const { comboType, startDate, useReset, isLoose, fixedSup } = settings;
-      const meta = COMBO_META[comboType];
-      const isUpCombo = meta.isUp;
-      const maxStep = meta.maxStep;
-      const startTimeMs = Date.parse((startDate || '2026-08-01') + 'T00:00:00+08:00');
-
-      let step = 0;
-      let isCompleted = false;
-      let epLevel = null;
-      let resetLevel = null;
-      let trackHigh = null;
-      let trackLow = null;
-      let foundS = false;
-      let foundR = false;
-      let sLow = null;
-      let rHigh = null;
-      let resetCount = 0;
-      let startBarIndex = -1;
-
-      const barStates = [];
-      const events = [];
-
-      for (let i = 0; i < bars.length; i++) {
-        const b = bars[i];
-        const prev = i > 0 ? bars[i - 1] : null;
-        const prev2 = i > 1 ? bars[i - 2] : null;
-
-        // Core Price Action Legos
-        const trueHigh = Math.max(b.high, prev ? prev.close : b.high);
-        const trueLow = Math.min(b.low, prev ? prev.close : b.low);
-        const isBull = b.close > b.open;
-        const isBear = b.close < b.open;
-        const isOB = Boolean(prev && b.high > prev.high && b.low < prev.low);
-        const isSwingS = Boolean(i >= 2 && prev.low <= prev2.low && prev.low <= b.low);
-        const isSwingR = Boolean(i >= 2 && prev.high >= prev2.high && prev.high >= b.high);
-        const isSYang = Boolean(prev && isBull && b.close > prev.high);
-        const isRYin = Boolean(prev && isBear && b.close < prev.low);
-
-        const inSession = b.time >= startTimeMs;
-        const prevInSession = prev ? (prev.time >= startTimeMs) : false;
-        const isStartBar = inSession && !prevInSession;
-
-        if (isStartBar) {
-          startBarIndex = i;
-          step = 0;
-          isCompleted = false;
-          epLevel = null;
-          resetLevel = null;
-          trackHigh = trueHigh;
-          trackLow = trueLow;
-          foundS = false;
-          foundR = false;
-          sLow = null;
-          rHigh = null;
-        }
-
-        let stepAdvanced = false;
-        let resetTriggered = false;
-        let stepLabel = '';
-        let auxMarker = '';
-
-        if (inSession && !isCompleted) {
-          trackHigh = trackHigh == null ? trueHigh : Math.max(trackHigh, trueHigh);
-          trackLow = trackLow == null ? trueLow : Math.min(trackLow, trueLow);
-
-          // 重數條件檢查 (Reset Mode)
-          if (useReset && step > 0 && resetLevel != null) {
-            if ((isUpCombo && b.low < resetLevel) || (!isUpCombo && b.high > resetLevel)) {
-              resetTriggered = true;
-              resetCount++;
-              const oldReset = resetLevel;
-              events.push({
-                barIndex: i,
-                date: b.date,
-                type: 'reset',
-                label: '重數',
-                step: 0,
-                price: b.close,
-                epLevel: null,
-                resetLevel: oldReset,
-                message: `因股價穿位 (${formatPrice(oldReset)})，請重新檢視組合提示。`
-              });
-              step = 0;
-              epLevel = null;
-              resetLevel = null;
-              trackHigh = trueHigh;
-              trackLow = trueLow;
-              foundS = false;
-              foundR = false;
-              sLow = null;
-              rHigh = null;
-            }
-          }
-
-          if (!resetTriggered) {
-            // 1. TERE (向上 4 步)
-            if (comboType === 'TERE') {
-              if (step === 0) {
-                if (isBear || (prev && b.close < prev.close)) {
-                  step = 1; epLevel = trueHigh; resetLevel = trackLow;
-                  stepAdvanced = true; stepLabel = 'T';
-                }
-              } else if (step === 1) {
-                if (epLevel != null && b.close > epLevel) {
-                  step = 2; stepAdvanced = true; stepLabel = 'E';
-                  const sameDayR = isLoose && (isOB || isSwingR || (b.high - b.close) > Math.max(0.001, (b.close - b.open) * 0.35));
-                  if (sameDayR) { step = 3; epLevel = trueHigh; stepLabel = 'E/R'; }
-                } else if (isBear && trueHigh < epLevel) {
-                  epLevel = trueHigh;
-                }
-              } else if (step === 2) {
-                if (isSwingR || isBear || (prev && b.low < prev.low)) {
-                  step = 3;
-                  epLevel = isSwingR && prev ? Math.max(prev.high, trueHigh) : Math.max(epLevel ?? 0, trueHigh);
-                  stepAdvanced = true; stepLabel = 'R';
-                }
-              } else if (step === 3) {
-                if (epLevel != null && b.close > epLevel) {
-                  step = 4; isCompleted = true; stepAdvanced = true; stepLabel = 'E (達成!)';
-                }
-              }
-            }
-            // 2. S陽TE (向上 3 步)
-            else if (comboType === 'S陽TE') {
-              if (step === 0) {
-                if (isSwingS && prev) {
-                  foundS = true; sLow = sLow == null ? prev.low : Math.min(sLow, prev.low); auxMarker = 'S';
-                }
-                if (foundS && isSYang) {
-                  step = 1; resetLevel = sLow != null ? sLow : trackLow;
-                  stepAdvanced = true; stepLabel = 'S陽';
-                }
-              } else if (step === 1) {
-                if (isBear || (prev && b.low < prev.low)) {
-                  step = 2; epLevel = trueHigh; stepAdvanced = true; stepLabel = 'T';
-                }
-              } else if (step === 2) {
-                if (epLevel != null && b.close > epLevel) {
-                  step = 3; isCompleted = true; stepAdvanced = true; stepLabel = 'E (達成!)';
-                } else if (isBear && trueHigh < epLevel) {
-                  epLevel = trueHigh;
-                }
-              }
-            }
-            // 3. S陽TERE (向上 5 步)
-            else if (comboType === 'S陽TERE') {
-              if (step === 0) {
-                if (isSwingS && prev) {
-                  foundS = true; sLow = sLow == null ? prev.low : Math.min(sLow, prev.low); auxMarker = 'S';
-                }
-                if (foundS && isSYang) {
-                  step = 1; resetLevel = sLow != null ? sLow : trackLow;
-                  stepAdvanced = true; stepLabel = 'S陽';
-                }
-              } else if (step === 1) {
-                if (isBear || (prev && b.low < prev.low)) {
-                  step = 2; epLevel = trueHigh; stepAdvanced = true; stepLabel = 'T';
-                }
-              } else if (step === 2) {
-                if (epLevel != null && b.close > epLevel) {
-                  step = 3; stepAdvanced = true; stepLabel = 'E';
-                  const sameDayR = isLoose && (isOB || isSwingR || (b.high - b.close) > Math.max(0.001, (b.close - b.open) * 0.35));
-                  if (sameDayR) { step = 4; epLevel = trueHigh; stepLabel = 'E/R'; }
-                } else if (isBear && trueHigh < epLevel) {
-                  epLevel = trueHigh;
-                }
-              } else if (step === 3) {
-                if (isSwingR || isBear || (prev && b.low < prev.low)) {
-                  step = 4;
-                  epLevel = isSwingR && prev ? Math.max(prev.high, trueHigh) : Math.max(epLevel ?? 0, trueHigh);
-                  stepAdvanced = true; stepLabel = 'R';
-                }
-              } else if (step === 4) {
-                if (epLevel != null && b.close > epLevel) {
-                  step = 5; isCompleted = true; stepAdvanced = true; stepLabel = 'E (達成!)';
-                }
-              }
-            }
-            // 4. R陰E (向下 2 步)
-            else if (comboType === 'R陰E') {
-              if (step === 0) {
-                if (isSwingR && prev) {
-                  foundR = true; rHigh = rHigh == null ? prev.high : Math.max(rHigh, prev.high); auxMarker = 'R';
-                }
-                if (foundR && isRYin) {
-                  step = 1; resetLevel = rHigh != null ? rHigh : trackHigh; epLevel = trueLow;
-                  stepAdvanced = true; stepLabel = 'R陰';
-                }
-              } else if (step === 1) {
-                if (epLevel != null && b.close < epLevel) {
-                  step = 2; isCompleted = true; stepAdvanced = true; stepLabel = 'E (達成!)';
-                }
-              }
-            }
-            // 5. 黑白DE (向下 3 步)
-            else if (comboType === '黑白DE') {
-              if (step === 0) {
-                const prevBear = prev ? (prev.close < prev.open) : false;
-                const nearOrAboveSup = b.high >= fixedSup * 0.92;
-                if (prevBear && isBull && nearOrAboveSup) {
-                  step = 1; resetLevel = Math.max(trackHigh ?? trueHigh, trueHigh);
-                  stepAdvanced = true; stepLabel = '黑白';
-                }
-              } else if (step === 1) {
-                if (isBear && ((prev && b.close < prev.low) || b.close < fixedSup)) {
-                  step = 2; epLevel = Math.min(trueLow, fixedSup);
-                  stepAdvanced = true; stepLabel = 'D';
-                }
-              } else if (step === 2) {
-                if (epLevel != null && b.close < epLevel) {
-                  step = 3; isCompleted = true; stepAdvanced = true; stepLabel = 'E (達成!)';
-                }
-              }
-            }
-
-            if (stepAdvanced) {
-              events.push({
-                barIndex: i,
-                date: b.date,
-                type: isCompleted ? 'complete' : 'step',
-                label: stepLabel,
-                step,
-                price: b.close,
-                epLevel,
-                resetLevel,
-                message: isCompleted
-                  ? `🎉 ${comboType} 組合已達成！收市價 ${formatPrice(b.close)} ${isUpCombo ? '突破' : '跌穿'} EP (${formatPrice(epLevel)})。`
-                  : `步數推進至 Step ${step}/${maxStep} [${stepLabel}]${epLevel != null ? ` · EP: ${formatPrice(epLevel)}` : ''}${resetLevel != null ? ` · Reset: ${formatPrice(resetLevel)}` : ''}`
-              });
-            }
-          }
-        }
-
-        barStates.push({
-          trueHigh, trueLow, isBull, isBear, isOB, isSwingS, isSwingR, isSYang, isRYin,
-          inSession, isStartBar, step, isCompleted, epLevel, resetLevel,
-          stepAdvanced, resetTriggered, stepLabel, auxMarker
-        });
-      }
-
-      const last = bars[bars.length - 1];
-      const prevBar = bars.length > 1 ? bars[bars.length - 2] : last;
-      const latestPrice = last ? last.close : null;
-      const changePct = (last && prevBar && prevBar.close) ? ((last.close - prevBar.close) / prevBar.close) * 100 : 0;
-      const distEpPct = (epLevel != null && latestPrice) ? ((epLevel - latestPrice) / latestPrice) * 100 : null;
-
-      let statusCode = 'IDLE', statusText = '未開始', statusOrder = 1;
-      if (isCompleted) { statusCode = 'COMPLETED'; statusText = '已達成'; statusOrder = 4; }
-      else if (step > 0) { statusCode = 'ACTIVE'; statusText = '進行中'; statusOrder = 3; }
-      else if (resetCount > 0) { statusCode = 'RESET'; statusText = `剛重數 (${resetCount})`; statusOrder = 2; }
-
-      return {
-        comboType, isUpCombo, maxStep, step, isCompleted,
-        epLevel, resetLevel, trackHigh, trackLow, resetCount, startBarIndex,
-        latestPrice, changePct, distEpPct,
-        statusCode, statusText, statusOrder,
-        barStates, events
-      };
-    }
-
-    // =========================================================================
-    // 6. 互動式 Canvas K 線圖 + 成交量渲染器 (TradingView 風格)
-    // =========================================================================
-    function renderChart() {
-      const canvas = document.getElementById('candlestickCanvas');
-      const wrapper = document.getElementById('canvasWrapper');
-      if (!canvas || !wrapper || appState.activeView !== 'chart') return;
-
-      const dpr = window.devicePixelRatio || 1;
-      const rect = wrapper.getBoundingClientRect();
-      const width = Math.max(300, Math.floor(rect.width));
-      const height = Math.max(380, Math.floor(rect.height));
-
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      canvas.style.width = width + 'px';
-      canvas.style.height = height + 'px';
-
-      const ctx = canvas.getContext('2d');
-      ctx.scale(dpr, dpr);
-
-      const pal = getActiveThemePalette();
-      const [bullR, bullG, bullB] = hexToRgbTuple(pal.bull);
-      const [bearR, bearG, bearB] = hexToRgbTuple(pal.bear);
-
-      // 背景 (跟隨目前主題)
-      ctx.fillStyle = pal.chartBg;
-      ctx.fillRect(0, 0, width, height);
-
-      const bars = appState.bars;
-      const res = appState.engineResult;
-      if (!bars.length || !res) return;
-
-      const padTop = 26;
-      const padBottom = 28;
-      const padLeft = 10;
-      const padRight = 68;
-      const plotW = width - padLeft - padRight;
-      const totalPlotH = height - padTop - padBottom;
-      const volH = Math.floor(totalPlotH * 0.17);
-      const priceH = totalPlotH - volH - 8;
-      const volTop = padTop + priceH + 8;
-
-      const sIdx = Math.max(0, Math.min(bars.length - 1, appState.chartView.startIdx));
-      const eIdx = Math.max(sIdx, Math.min(bars.length - 1, appState.chartView.endIdx));
-      const visibleCount = eIdx - sIdx + 1;
-
-      let minP = Infinity, maxP = -Infinity, maxVol = 1;
-      for (let i = sIdx; i <= eIdx; i++) {
-        if (bars[i].low < minP) minP = bars[i].low;
-        if (bars[i].high > maxP) maxP = bars[i].high;
-        if (bars[i].volume > maxVol) maxVol = bars[i].volume;
-      }
-
-      const includeLvl = (lvl) => {
-        if (lvl == null || isNaN(lvl)) return;
-        const r = maxP - minP || maxP * 0.1;
-        if (lvl >= minP - r * 0.45 && lvl <= maxP + r * 0.45) {
-          minP = Math.min(minP, lvl);
-          maxP = Math.max(maxP, lvl);
-        }
-      };
-      includeLvl(res.epLevel);
-      includeLvl(res.resetLevel);
-      if (appState.settings.comboType === '黑白DE') includeLvl(appState.settings.fixedSup);
-
-      const rawRange = maxP - minP || maxP * 0.05 || 1;
-      minP -= rawRange * 0.11;
-      maxP += rawRange * 0.14;
-      const priceRange = maxP - minP;
-
-      const yOf = p => padTop + ((maxP - p) / priceRange) * priceH;
-      const slotW = plotW / visibleCount;
-      const xOf = idx => padLeft + (idx - sIdx + 0.5) * slotW;
-      const candleW = Math.max(2, Math.min(16, slotW * 0.66));
-
-      // 水平價格網格線
-      ctx.strokeStyle = pal.chartGrid;
-      ctx.lineWidth = 1;
-      ctx.font = '11px JetBrains Mono, monospace';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      const gridRows = 5;
-      for (let g = 0; g <= gridRows; g++) {
-        const p = maxP - (priceRange * g) / gridRows;
-        const y = Math.round(yOf(p)) + 0.5;
-        ctx.beginPath(); ctx.moveTo(padLeft, y); ctx.lineTo(width - padRight, y); ctx.stroke();
-        ctx.fillStyle = pal.chartAxisText;
-        ctx.fillText(formatPrice(p), width - padRight + 6, y);
-      }
-
-      // 成交量分隔線
-      ctx.strokeStyle = pal.borderColor;
-      ctx.beginPath(); ctx.moveTo(padLeft, volTop - 4); ctx.lineTo(width - padRight, volTop - 4); ctx.stroke();
-
-      // 垂直日期網格線
-      const labelStep = Math.max(1, Math.floor(visibleCount / Math.max(4, Math.floor(plotW / 110))));
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      for (let i = sIdx; i <= eIdx; i += labelStep) {
-        const x = Math.round(xOf(i)) + 0.5;
-        ctx.strokeStyle = pal.chartGridV;
-        ctx.beginPath(); ctx.moveTo(x, padTop); ctx.lineTo(x, height - padBottom); ctx.stroke();
-        ctx.fillStyle = pal.chartAxisText;
-        ctx.fillText(bars[i].date.slice(2), x, height - padBottom + 7);
-      }
-
-      // 起點 (灰) 與 步數推進/達成 (綠/上升色) 背景色帶
-      if (appState.settings.showBg) {
-        for (let i = sIdx; i <= eIdx; i++) {
-          const bs = res.barStates[i];
-          const xc = xOf(i);
-          const bw = Math.max(slotW, 4);
-          if (bs.isStartBar) {
-            ctx.fillStyle = pal.chartStartBand;
-            ctx.fillRect(xc - bw / 2, padTop, bw, totalPlotH);
-            ctx.fillStyle = pal.chartStartLabel;
-            ctx.font = 'bold 10px Inter, Noto Sans TC, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('時光機起點', xc, padTop + 8);
-          } else if (bs.stepAdvanced) {
-            ctx.fillStyle = bs.isCompleted
-              ? `rgba(${bullR}, ${bullG}, ${bullB}, 0.25)`
-              : `rgba(${bullR}, ${bullG}, ${bullB}, 0.13)`;
-            ctx.fillRect(xc - bw / 2, padTop, bw, totalPlotH);
-          } else if (bs.resetTriggered) {
-            ctx.fillStyle = `rgba(${bearR}, ${bearG}, ${bearB}, 0.16)`;
-            ctx.fillRect(xc - bw / 2, padTop, bw, totalPlotH);
-          }
-        }
-      }
-
-      // 繪製 K 線與底部成交量柱 (跟隨目前主題與港式/美式配色)
-      for (let i = sIdx; i <= eIdx; i++) {
-        const b = bars[i];
-        const x = xOf(i);
-        const isBull = b.close >= b.open;
-        const color = isBull ? pal.bull : pal.bear;
-
-        // 成交量柱
-        const vh = Math.max(1, (b.volume / maxVol) * (volH - 4));
-        ctx.fillStyle = isBull
-          ? `rgba(${bullR}, ${bullG}, ${bullB}, 0.34)`
-          : `rgba(${bearR}, ${bearG}, ${bearB}, 0.34)`;
-        ctx.fillRect(x - candleW / 2, volTop + volH - vh, candleW, vh);
-
-        // 影線
-        ctx.strokeStyle = color;
-        ctx.lineWidth = Math.max(1, Math.min(2, slotW * 0.12));
-        ctx.beginPath();
-        ctx.moveTo(x, yOf(b.high));
-        ctx.lineTo(x, yOf(b.low));
-        ctx.stroke();
-
-        // 燭身
-        const yO = yOf(b.open), yC = yOf(b.close);
-        ctx.fillStyle = color;
-        ctx.fillRect(x - candleW / 2, Math.min(yO, yC), candleW, Math.max(1.5, Math.abs(yC - yO)));
-      }
-
-      // 繪製水平虛線 (EP / Reset / 支持位)
-      const drawPriceLine = (level, color, label) => {
-        if (level == null || isNaN(level)) return;
-        const y = yOf(level);
-        if (y < padTop - 4 || y > padTop + priceH + 4) return;
-        ctx.save();
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1.4;
-        ctx.setLineDash([5, 4]);
-        ctx.beginPath(); ctx.moveTo(padLeft, y); ctx.lineTo(width - padRight, y); ctx.stroke();
-        ctx.restore();
-
-        // 右側 Y 軸價格標籤
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.roundRect(width - padRight + 2, y - 9, padRight - 5, 18, 4);
-        ctx.fill();
-        ctx.fillStyle = isLightHex(color) ? '#0f172a' : '#ffffff';
-        ctx.font = 'bold 10px JetBrains Mono, monospace';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(formatPrice(level), width - padRight + 2 + (padRight - 5) / 2, y);
-
-        ctx.fillStyle = color;
-        ctx.font = 'bold 10px Inter, Noto Sans TC, sans-serif';
-        ctx.textAlign = 'right';
-        ctx.fillText(label, width - padRight - 6, y - 9);
-      };
-
-      if (appState.settings.comboType === '黑白DE') drawPriceLine(appState.settings.fixedSup, pal.accent, '支持位');
-      drawPriceLine(res.resetLevel, pal.bear, 'Reset 重數位');
-      drawPriceLine(res.epLevel, res.isCompleted ? pal.bull : pal.amber, 'EP 觸發位');
-
-      // 繪製步數膠囊標籤
-      const drawPill = (x, y, text, bg, fg, above) => {
-        ctx.save();
-        ctx.font = 'bold 10px Inter, Noto Sans TC, sans-serif';
-        const tw = ctx.measureText(text).width;
-        const pw = tw + 12, ph = 17;
-        const cx = Math.max(padLeft + pw / 2, Math.min(width - padRight - pw / 2, x));
-        const py = above ? Math.max(padTop + 2, y - ph - 6) : Math.min(padTop + priceH - ph - 2, y + 6);
-        ctx.fillStyle = bg;
-        ctx.beginPath(); ctx.roundRect(cx - pw / 2, py, pw, ph, 6); ctx.fill();
-        ctx.fillStyle = fg;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(text, cx, py + ph / 2 + 0.5);
-        ctx.restore();
-      };
-
-      for (let i = sIdx; i <= eIdx; i++) {
-        const b = bars[i], bs = res.barStates[i], x = xOf(i);
-        if (bs.resetTriggered) {
-          drawPill(x, yOf(b.low), '重數', pal.bear, '#ffffff', false);
-        } else if (bs.stepAdvanced && bs.stepLabel) {
-          const isComp = bs.isCompleted;
-          const bg = isComp ? pal.bull : (res.isUpCombo ? pal.accent : pal.amber);
-          const fg = isLightHex(bg) ? '#0f172a' : '#ffffff';
-          const above = !res.isUpCombo || isComp;
-          drawPill(x, above ? yOf(b.high) : yOf(b.low), bs.stepLabel, bg, fg, above);
-        } else if (bs.auxMarker) {
-          const isS = bs.auxMarker === 'S';
-          drawPill(x, isS ? yOf(b.low) : yOf(b.high), bs.auxMarker, pal.isLight ? '#cbd5e1' : '#334155', pal.isLight ? '#0f172a' : '#e2e8f0', !isS);
-        }
-      }
-
-      // Y 軸邊界線
-      ctx.strokeStyle = pal.borderColor;
-      ctx.beginPath(); ctx.moveTo(width - padRight + 0.5, 0); ctx.lineTo(width - padRight + 0.5, height); ctx.stroke();
-
-      // 十字準星
-      const hIdx = appState.chartView.hoverIdx;
-      if (hIdx >= sIdx && hIdx <= eIdx) {
-        const hx = xOf(hIdx);
-        const hy = Math.max(padTop, Math.min(padTop + priceH, appState.chartView.hoverY));
-        ctx.save();
-        ctx.strokeStyle = pal.isLight ? 'rgba(71, 85, 105, 0.45)' : 'rgba(148, 163, 184, 0.45)';
-        ctx.setLineDash([3, 3]);
-        ctx.beginPath();
-        ctx.moveTo(hx, padTop); ctx.lineTo(hx, height - padBottom);
-        ctx.moveTo(padLeft, hy); ctx.lineTo(width - padRight, hy);
-        ctx.stroke();
-        ctx.restore();
-
-        const hp = maxP - ((hy - padTop) / priceH) * priceRange;
-        ctx.fillStyle = pal.isLight ? '#334155' : '#334155';
-        ctx.beginPath(); ctx.roundRect(width - padRight + 2, hy - 9, padRight - 5, 18, 4); ctx.fill();
-        ctx.fillStyle = '#f8fafc';
-        ctx.font = '10px JetBrains Mono, monospace';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(formatPrice(hp), width - padRight + 2 + (padRight - 5) / 2, hy);
-      }
-    }
-
-    function updateChartHudAndTooltip(idx, mouseX, mouseY) {
-      const tooltip = document.getElementById('chartTooltip');
-      const hud = document.getElementById('chartOhlcvHud');
-      const wrapper = document.getElementById('canvasWrapper');
-      if (idx < 0 || idx >= appState.bars.length || !appState.engineResult) {
-        tooltip.classList.add('hidden');
-        return;
-      }
-
-      const b = appState.bars[idx];
-      const prev = idx > 0 ? appState.bars[idx - 1] : null;
-      const bs = appState.engineResult.barStates[idx];
-      const chg = prev ? ((b.close - prev.close) / prev.close) * 100 : 0;
-      const chgCls = chg >= 0 ? 'text-bull' : 'text-bear';
-
-      // 更新頂部 OHLCV HUD
-      hud.innerHTML = `
-        <span class="text-white font-bold">${b.date}</span>
-        <span>O: <b class="text-slate-100">${formatPrice(b.open)}</b></span>
-        <span>H: <b class="text-slate-100">${formatPrice(b.high)}</b></span>
-        <span>L: <b class="text-slate-100">${formatPrice(b.low)}</b></span>
-        <span>C: <b class="${chgCls}">${formatPrice(b.close)} (${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%)</b></span>
-        <span>Vol: <b class="text-slate-300">${(b.volume / 1e6).toFixed(2)}M</b></span>
-        <span>Step: <b class="text-amberAccent">${bs.step}/${appState.engineResult.maxStep}</b></span>
-      `;
-
-      let badgeHtml = '';
-      if (bs.resetTriggered) badgeHtml = `<div class="mt-1.5 px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-semibold text-center">⚠ 穿位重數 (Reset)</div>`;
-      else if (bs.stepAdvanced) badgeHtml = `<div class="mt-1.5 px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold text-center">✓ ${bs.stepLabel} (Step ${bs.step})</div>`;
-
-      tooltip.innerHTML = `
-        <div class="font-mono font-bold text-white border-b border-borderDark pb-1 mb-1 flex justify-between">
-          <span>${b.date}</span>
-          <span class="${chgCls}">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</span>
-        </div>
-        <div class="grid grid-cols-2 gap-x-3 gap-y-0.5 font-mono text-[11px]">
-          <span class="text-slate-400">開 / 收</span><span class="text-right text-slate-100">${formatPrice(b.open)} / ${formatPrice(b.close)}</span>
-          <span class="text-slate-400">高 / 低</span><span class="text-right text-slate-100">${formatPrice(b.high)} / ${formatPrice(b.low)}</span>
-          <span class="text-slate-400">TrueHigh</span><span class="text-right text-skyAccent">${formatPrice(bs.trueHigh)}</span>
-          <span class="text-slate-400">TrueLow</span><span class="text-right text-skyAccent">${formatPrice(bs.trueLow)}</span>
-          <span class="text-slate-400">成交量</span><span class="text-right text-slate-300">${(b.volume / 1e6).toFixed(2)}M</span>
-        </div>
-        ${badgeHtml}
-      `;
-      tooltip.classList.remove('hidden');
-
-      const wr = wrapper.getBoundingClientRect();
-      const tw = tooltip.offsetWidth || 190, th = tooltip.offsetHeight || 150;
-      let left = mouseX + 16, top = mouseY + 14;
-      if (left + tw > wr.width - 75) left = mouseX - tw - 16;
-      if (top + th > wr.height - 10) top = Math.max(8, wr.height - th - 10);
-      tooltip.style.left = `${Math.max(8, left)}px`;
-      tooltip.style.top = `${Math.max(8, top)}px`;
-    }
-    // 生成迷你 SVG Sparkline 走勢圖 (Dashboard 卡片用，動態跟隨目前主題漲跌色)
-    function buildSparklineSVG(bars, isUp) {
-      const slice = bars.slice(-30);
-      if (slice.length < 2) return '';
-      const vals = slice.map(b => b.close);
+<!-- ... existing code ... -->
+    // 生成迷你 SVG Sparkline 走勢圖 (支援 number[] 陣列或 bar[] 物件，動態跟隨主題漲跌色)
+    function buildSparklineSVG(data, isUp) {
+      if (!Array.isArray(data) || data.length < 2) return '';
+      const vals = typeof data[0] === 'number'
+        ? data.slice(-30)
+        : data.slice(-30).map(b => b.close);
+      if (vals.length < 2) return '';
       const min = Math.min(...vals), max = Math.max(...vals);
       const range = max - min || 1;
-      const w = 110, h = 34;
+      const w = 104, h = 32;
       const pts = vals.map((v, i) => {
         const x = (i / (vals.length - 1)) * w;
         const y = h - 3 - ((v - min) / range) * (h - 6);
@@ -2186,6 +255,166 @@
       return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" class="overflow-visible shrink-0"><polyline fill="none" stroke="${stroke}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" points="${pts}"/></svg>`;
     }
 
+    // 判斷事件日期是否於最近 5 個交易日 (約 7 個日曆日) 內
+    function isWithinRecent5Days(eventDateStr, refDateStr) {
+      if (!eventDateStr) return false;
+      const evMs = Date.parse(eventDateStr + 'T00:00:00+08:00');
+      const refMs = refDateStr ? Date.parse(refDateStr + 'T00:00:00+08:00') : Date.now();
+      if (isNaN(evMs) || isNaN(refMs)) return false;
+      const diffDays = (refMs - evMs) / (1000 * 60 * 60 * 24);
+      return diffDays >= -1 && diffDays <= 7;
+    }
+
+    // =========================================================================
+    // 6.5 雲端港股通資料庫 (./scan_results.json) 自動載入與映射引擎
+    // =========================================================================
+    function updateCloudStatusBadges(loaded, meta = null) {
+      const hPill = document.getElementById('headerCloudStatusPill');
+      const hDot = document.getElementById('headerCloudDot');
+      const hTxt = document.getElementById('headerCloudText');
+      const dBanner = document.getElementById('dashCloudStatusBanner');
+      const dTag = document.getElementById('dashActiveSourceTag');
+      const sPill = document.getElementById('scannerCloudPill');
+
+      if (loaded && meta) {
+        const label = `雲端港股通真實數據 (${meta.total_scanned} 隻 · ${meta.updated_at})`;
+        hPill.className = 'hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/35 text-[11px] font-semibold text-bull';
+        hDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+        hTxt.textContent = label;
+        dBanner.className = 'inline-flex flex-wrap items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/35 text-bull text-[11px] font-semibold';
+        dTag.textContent = label;
+        if (sPill) {
+          sPill.textContent = label;
+          sPill.className = 'text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-bull border border-emerald-500/35 font-semibold';
+        }
+      } else {
+        const fallbackLabel = '預覽模式：部署至 GitHub Pages 後將自動讀取 scan_results.json';
+        hPill.className = 'hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/35 text-[11px] font-semibold text-amberAccent';
+        hDot.className = 'w-2 h-2 rounded-full bg-amberAccent';
+        hTxt.textContent = '預覽模式 (內建 57 隻)';
+        dBanner.className = 'inline-flex flex-wrap items-center gap-2 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/35 text-amberAccent text-[11px] font-semibold';
+        dTag.textContent = fallbackLabel;
+        if (sPill) {
+          sPill.textContent = fallbackLabel;
+          sPill.className = 'text-[11px] px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amberAccent border border-amber-500/35 font-semibold';
+        }
+      }
+    }
+
+    function applyCloudScanToState() {
+      if (!appState.cloudLoaded || !appState.cloudScanData?.stocks) return false;
+      const comboKey = appState.settings.comboType;
+      const fallbackMax = COMBO_META[comboKey]?.maxStep || 5;
+
+      appState.scanResults = appState.cloudScanData.stocks.map(st => {
+        const c = st.combos?.[comboKey] || {
+          step: 0, max_step: fallbackMax, completed: false,
+          ep_level: null, reset_level: null, last_event: '', last_event_date: ''
+        };
+        const step = Number(c.step || 0);
+        const maxStep = Number(c.max_step || fallbackMax);
+        const isCompleted = Boolean(c.completed);
+        let statusCode = 'IDLE', statusText = '未開始', statusOrder = 1;
+        if (isCompleted) { statusCode = 'COMPLETED'; statusText = '已達成'; statusOrder = 4; }
+        else if (step > 0) { statusCode = 'ACTIVE'; statusText = '進行中'; statusOrder = 3; }
+        else if (c.last_event === 'Reset') { statusCode = 'RESET'; statusText = '剛重數'; statusOrder = 2; }
+
+        const meta = appState.stocks.find(x => x.symbol === st.ticker);
+        const sector = meta ? meta.sector : '港股通';
+        const distEpPct = (c.ep_level != null && st.close) ? ((c.ep_level - st.close) / st.close) * 100 : null;
+        const latestEvent = c.last_event ? {
+          date: c.last_event_date || st.last_date || '',
+          type: isCompleted ? 'complete' : (c.last_event === 'Reset' ? 'reset' : 'step'),
+          label: c.last_event,
+          step,
+          price: st.close,
+          message: isCompleted
+            ? `🎉 ${comboKey} 已達成！現價 ${formatPrice(st.close)} · EP ${formatPrice(c.ep_level)}`
+            : `最新訊號 [${c.last_event}] · Step ${step}/${maxStep}${c.ep_level != null ? ` · EP ${formatPrice(c.ep_level)}` : ''}`
+        } : null;
+
+        return {
+          symbol: st.ticker,
+          name: st.name || st.ticker,
+          sector,
+          price: st.close,
+          changePct: st.change_pct || 0,
+          volume: st.volume || 0,
+          turnoverM: st.turnover_m || 0,
+          lastDate: st.last_date || '',
+          lastEvent: c.last_event || '',
+          lastEventDate: c.last_event_date || '',
+          statusCode,
+          statusText,
+          statusOrder,
+          step,
+          maxStep,
+          epLevel: c.ep_level,
+          resetLevel: c.reset_level,
+          distEpPct,
+          resetCount: c.last_event === 'Reset' ? 1 : 0,
+          sourceTag: '雲端港股通',
+          latestEvent,
+          sparkline: st.sparkline || []
+        };
+      });
+
+      appState.scanPage = 1;
+      renderDashboard();
+      renderScannerTable();
+      return true;
+    }
+
+    async function loadCloudScanResults(showToastMsg = false) {
+      try {
+        const res = await fetch(`./scan_results.json?t=${Date.now()}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!data || !Array.isArray(data.stocks) || !data.stocks.length) {
+          throw new Error('JSON 格式無效或無股票資料');
+        }
+
+        appState.cloudScanData = data;
+        appState.cloudLoaded = true;
+
+        // 將雲端 550+ 隻港股通名單合併至全站股票資料庫，支援代號與中文名即時搜尋
+        const existingMap = new Map(appState.stocks.map(s => [s.symbol, s]));
+        for (const st of data.stocks) {
+          const ex = existingMap.get(st.ticker);
+          if (ex) {
+            if (st.name && ex.name.startsWith('港股 ')) ex.name = st.name;
+            ex.base = st.close || ex.base;
+          } else {
+            const entry = {
+              symbol: st.ticker,
+              name: st.name || st.ticker,
+              sector: '港股通',
+              base: st.close || 10,
+              vol: 0.025
+            };
+            appState.stocks.push(entry);
+            existingMap.set(st.ticker, entry);
+          }
+        }
+        populateChartStockSelect();
+
+        updateCloudStatusBadges(true, data);
+        applyCloudScanToState();
+
+        if (showToastMsg) {
+          showToast(`已載入雲端港股通真實數據：共 ${data.total_scanned} 隻 (${data.updated_at})`, 'success');
+        }
+        return true;
+      } catch (err) {
+        appState.cloudLoaded = false;
+        updateCloudStatusBadges(false, null);
+        if (showToastMsg) {
+          showToast('目前環境無法讀取 ./scan_results.json，已切換至本地掃描模式。', 'warn');
+        }
+        return false;
+      }
+    }
+
     // =========================================================================
     // 7. 頁面渲染函式 (Dashboard / Chart / Scanner / Watchlist / Guide)
     // =========================================================================
@@ -2193,26 +422,28 @@
       const res = appState.scanResults;
       const total = res.length;
       const completed = res.filter(r => r.statusCode === 'COMPLETED');
-      const activeStep2 = res.filter(r => r.statusCode === 'ACTIVE' && r.step >= 2);
-      const resetItems = res.filter(r => r.statusCode === 'RESET' || r.resetCount > 0);
+      const activeItems = res.filter(r => r.statusCode === 'ACTIVE');
+      const highTurnover = res.filter(r => (r.turnoverM || 0) >= 100);
 
       document.getElementById('kpiTotal').textContent = total;
       document.getElementById('kpiCompleted').textContent = completed.length;
       document.getElementById('kpiCompletedPct').textContent = total ? `${((completed.length / total) * 100).toFixed(1)}%` : '0%';
-      document.getElementById('kpiActive').textContent = activeStep2.length;
-      document.getElementById('kpiReset').textContent = resetItems.length;
-      document.getElementById('dashActiveSourceTag').textContent =
-        appState.dataSource === 'live' ? '即時港股數據 (Yahoo Proxy)' : '模擬演示數據 (離線即用)';
+      document.getElementById('kpiActive').textContent = activeItems.length;
+      document.getElementById('kpiReset').textContent = highTurnover.length;
       document.getElementById('dashComboSelect').value = appState.settings.comboType;
 
-      // 熱門訊號精選 (取前 6 隻最高優先級)
+      // 熱門訊號精選 (優先列出已達成 + 高步數 + 高成交額)
       const featured = [...res]
-        .sort((a, b) => (b.statusOrder - a.statusOrder) || (b.step - a.step) || (Math.abs(a.distEpPct ?? 999) - Math.abs(b.distEpPct ?? 999)))
+        .sort((a, b) =>
+          (b.statusOrder - a.statusOrder) ||
+          (b.step - a.step) ||
+          ((b.turnoverM || 0) - (a.turnoverM || 0))
+        )
         .slice(0, 6);
 
       const grid = document.getElementById('dashFeaturedGrid');
       if (!featured.length) {
-        grid.innerHTML = `<div class="col-span-full bg-surface border border-borderDark rounded-2xl p-8 text-center text-xs text-slate-400">正在初始化全港股掃描結果...</div>`;
+        grid.innerHTML = `<div class="col-span-full bg-surface border border-borderDark rounded-2xl p-8 text-center text-xs text-slate-400">正在載入港股通掃描結果...</div>`;
       } else {
         grid.innerHTML = featured.map(r => {
           const stCls = r.statusCode === 'COMPLETED'
@@ -2221,50 +452,41 @@
               ? 'bg-sky-500/15 text-skyAccent border-sky-500/30'
               : 'bg-rose-500/15 text-bear border-rose-500/30';
           const chgCls = r.changePct >= 0 ? 'text-bull' : 'text-bear';
+          const sparkSource = (r.sparkline && r.sparkline.length >= 2) ? r.sparkline : (r.bars || []);
+          const sparkSvg = buildSparklineSVG(sparkSource, r.changePct >= 0);
+          const turnoverLabel = r.turnoverM != null ? `HK$${r.turnoverM >= 100 ? (r.turnoverM / 100).toFixed(2) + '億' : r.turnoverM.toFixed(1) + 'M'}` : '--';
+
           return `
             <div data-jump-chart="${r.symbol}" class="cursor-pointer bg-surface hover:bg-surfaceAlt border border-borderDark hover:border-sky-500/40 rounded-2xl p-4 transition flex flex-col justify-between gap-3 group">
               <div class="flex items-start justify-between gap-2">
-                <div>
+                <div class="min-w-0">
                   <div class="flex items-center gap-1.5">
                     <span class="font-mono font-extrabold text-sm text-white group-hover:text-skyAccent transition">${r.symbol}</span>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-obsidian text-slate-400">${r.sector}</span>
+                    <span class="text-xs text-slate-300 truncate">${r.name}</span>
                   </div>
-                  <div class="text-xs text-slate-300 mt-0.5">${r.name}</div>
+                  <div class="flex items-center gap-2 mt-1">
+                    <span class="font-mono font-bold text-base text-white">${formatPrice(r.price)}</span>
+                    <span class="font-mono text-xs font-semibold ${chgCls}">${r.changePct >= 0 ? '+' : ''}${r.changePct.toFixed(2)}%</span>
+                  </div>
                 </div>
-                <span class="px-2 py-0.5 text-[10px] font-bold rounded-full border ${stCls}">${r.statusText}</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${stCls}">Step ${r.step}/${r.maxStep} · ${r.statusText}</span>
               </div>
-
-              <div class="flex items-end justify-between gap-2">
-                <div>
-                  <div class="font-mono font-bold text-lg text-white">${formatPrice(r.price)}</div>
-                  <div class="font-mono text-[11px] font-semibold ${chgCls}">${r.changePct >= 0 ? '+' : ''}${r.changePct.toFixed(2)}%</div>
+              <div class="flex items-end justify-between gap-2 pt-1">
+                <div class="text-[11px] space-y-0.5 text-slate-400 font-mono">
+                  <div>EP: <span class="text-amberAccent font-semibold">${formatPrice(r.epLevel)}</span></div>
+                  <div>成交: <span class="text-slate-200">${turnoverLabel}</span></div>
                 </div>
-                ${buildSparklineSVG(r.bars || [], r.changePct >= 0)}
-              </div>
-
-              <div class="grid grid-cols-3 gap-1.5 pt-2.5 border-t border-borderDark text-[11px]">
-                <div>
-                  <span class="text-slate-500 block text-[10px]">進度</span>
-                  <span class="font-mono font-bold text-white">Step ${r.step}/${r.maxStep}</span>
-                </div>
-                <div>
-                  <span class="text-slate-500 block text-[10px]">EP 觸發價</span>
-                  <span class="font-mono font-semibold text-amberAccent">${formatPrice(r.epLevel)}</span>
-                </div>
-                <div class="text-right">
-                  <span class="text-slate-500 block text-[10px]">Reset 位</span>
-                  <span class="font-mono font-semibold text-bear">${formatPrice(r.resetLevel)}</span>
-                </div>
+                ${sparkSvg}
               </div>
             </div>
           `;
         }).join('');
       }
 
-      // 即時警示動態 (彙整所有股票最近事件)
+      // 即時警示動態 (彙整最新觸發事件)
       const feedEvents = [];
       for (const item of res) {
-        if (item.latestEvent) {
+        if (item.latestEvent && item.latestEvent.date) {
           feedEvents.push({ ...item.latestEvent, symbol: item.symbol, name: item.name });
         }
       }
@@ -2284,11 +506,11 @@
           return `
             <div data-jump-chart="${ev.symbol}" class="cursor-pointer px-4 py-3 hover:bg-surfaceAlt/80 transition">
               <div class="flex items-center justify-between gap-2 mb-1">
-                <div class="flex items-center gap-2">
-                  <span class="font-mono font-bold text-xs text-white">${ev.symbol}</span>
-                  <span class="text-[11px] text-slate-400">${ev.name}</span>
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="font-mono font-bold text-xs text-white shrink-0">${ev.symbol}</span>
+                  <span class="text-[11px] text-slate-400 truncate">${ev.name}</span>
                 </div>
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${badge}">${ev.label}</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${badge}">${ev.label}</span>
               </div>
               <p class="text-[11px] text-slate-300 leading-relaxed">${ev.message}</p>
               <div class="text-[10px] font-mono text-slate-500 mt-1">${ev.date} · 收市 ${formatPrice(ev.price)}</div>
@@ -2297,107 +519,28 @@
         }).join('');
       }
     }
-
-    function updateChartUI() {
-      const bars = appState.bars;
-      if (!bars.length) return;
-
-      appState.engineResult = runComboEngine(bars, appState.settings);
-      const res = appState.engineResult;
-      const last = bars[bars.length - 1];
-      const prev = bars.length > 1 ? bars[bars.length - 2] : last;
-      const diff = last.close - prev.close;
-      const pct = prev.close ? (diff / prev.close) * 100 : 0;
-
-      document.getElementById('hdrSymbol').textContent = appState.currentSymbol;
-      document.getElementById('hdrName').textContent = appState.currentName;
-      document.getElementById('hdrSector').textContent = appState.currentSector;
-      document.getElementById('hdrPrice').textContent = formatPrice(last.close);
-      const chgEl = document.getElementById('hdrChange');
-      chgEl.textContent = `${diff >= 0 ? '+' : ''}${formatPrice(diff)} (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)`;
-      chgEl.className = `font-mono font-semibold ${diff >= 0 ? 'text-bull' : 'text-bear'}`;
-      document.getElementById('hdrDate').textContent = `最新交易日: ${last.date}`;
-
-      // 數據源標籤
-      const dsBadge = document.getElementById('dataSourceBadge');
-      dsBadge.textContent = appState.activeSourceTag;
-      dsBadge.className = appState.activeSourceTag.includes('即時')
-        ? 'px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-500/15 text-bull border border-emerald-500/30'
-        : appState.activeSourceTag.includes('CSV')
-          ? 'px-2 py-0.5 text-[10px] font-semibold rounded-full bg-sky-500/15 text-skyAccent border border-sky-500/30'
-          : 'px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-500/15 text-amberAccent border border-amber-500/30';
-
-      // 自選按鈕狀態
-      const inWatch = appState.watchlist.some(w => w.symbol === appState.currentSymbol);
-      const wBtn = document.getElementById('chartToggleWatchBtn');
-      wBtn.textContent = inWatch ? '★ 已在自選' : '☆ 加入自選';
-      wBtn.className = inWatch
-        ? 'px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-xs font-bold text-amberAccent transition'
-        : 'px-3 py-1.5 rounded-xl bg-obsidian hover:bg-slate-800 border border-borderDark text-xs font-semibold text-slate-300 transition';
-
-      // 浮動狀態面板
-      const overlay = document.getElementById('statusOverlayPanel');
-      overlay.classList.toggle('hidden', !appState.settings.showTable);
-      document.getElementById('ovCombo').textContent = `${res.comboType} (${res.isUpCombo ? '向上' : '向下'})`;
-      document.getElementById('ovStep').textContent = `${res.step} / ${res.maxStep}`;
-      document.getElementById('ovEp').textContent = formatPrice(res.epLevel);
-      document.getElementById('ovReset').textContent = formatPrice(res.resetLevel);
-      document.getElementById('ovTrackHigh').textContent = formatPrice(res.trackHigh);
-      document.getElementById('ovTrackLow').textContent = formatPrice(res.trackLow);
-
-      const stBadge = document.getElementById('ovStatusBadge');
-      stBadge.textContent = res.statusText;
-      stBadge.className = res.statusCode === 'COMPLETED'
-        ? 'text-[10px] px-1.5 py-0.5 rounded font-bold bg-emerald-500/20 text-bull'
-        : res.statusCode === 'ACTIVE'
-          ? 'text-[10px] px-1.5 py-0.5 rounded font-bold bg-sky-500/20 text-skyAccent'
-          : res.statusCode === 'RESET'
-            ? 'text-[10px] px-1.5 py-0.5 rounded font-bold bg-rose-500/20 text-bear'
-            : 'text-[10px] px-1.5 py-0.5 rounded font-semibold bg-slate-700 text-slate-300';
-
-      // 底部 Alert Log
-      const logBody = document.getElementById('alertLogBody');
-      document.getElementById('alertLogCount').textContent = `${res.events.length} 筆`;
-      if (!res.events.length) {
-        logBody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-500">於時光機起點 (${appState.settings.startDate}) 後尚未觸發組合步數或重數事件。</td></tr>`;
-      } else {
-        logBody.innerHTML = res.events.slice().reverse().map(ev => {
-          const pill = ev.type === 'complete'
-            ? 'bg-emerald-500/20 text-bull border-emerald-500/40'
-            : ev.type === 'reset'
-              ? 'bg-rose-500/20 text-bear border-rose-500/40'
-              : 'bg-sky-500/15 text-skyAccent border-sky-500/30';
-          return `
-            <tr class="hover:bg-surfaceAlt/60 transition">
-              <td class="py-2 px-4 font-mono text-slate-300 whitespace-nowrap">${ev.date}</td>
-              <td class="py-2 px-3 whitespace-nowrap"><span class="px-2 py-0.5 rounded-full text-[11px] font-bold border ${pill}">${ev.label}</span></td>
-              <td class="py-2 px-3 font-mono text-slate-200 whitespace-nowrap">Step ${ev.step}/${res.maxStep}</td>
-              <td class="py-2 px-3 font-mono text-right text-white">${formatPrice(ev.price)}</td>
-              <td class="py-2 px-3 font-mono text-right text-amberAccent">${formatPrice(ev.epLevel)}</td>
-              <td class="py-2 px-3 font-mono text-right text-bear">${formatPrice(ev.resetLevel)}</td>
-              <td class="py-2 px-4 text-slate-300">${ev.message}</td>
-            </tr>
-          `;
-        }).join('');
-      }
-
-      renderChart();
-    }
-
+<!-- ... existing code ... -->
     function renderScannerTable() {
       const res = appState.scanResults;
+      const latestRefDate = res.reduce((acc, r) => (r.lastDate && r.lastDate > acc ? r.lastDate : acc), '');
+
       document.getElementById('scannerComboPill').textContent = appState.settings.comboType;
       document.getElementById('scanComboSelect').value = appState.settings.comboType;
       document.getElementById('cntAll').textContent = res.length;
       document.getElementById('cntCompleted').textContent = res.filter(r => r.statusCode === 'COMPLETED').length;
-      document.getElementById('cntActive').textContent = res.filter(r => r.statusCode === 'ACTIVE').length;
-      document.getElementById('cntReset').textContent = res.filter(r => r.statusCode === 'RESET').length;
-      document.getElementById('cntIdle').textContent = res.filter(r => r.statusCode === 'IDLE').length;
+      document.getElementById('cntActive').textContent = res.filter(r => r.step >= 1).length;
+      const cntRecentEl = document.getElementById('cntRecent5');
+      if (cntRecentEl) {
+        cntRecentEl.textContent = res.filter(r => isWithinRecent5Days(r.lastEventDate, latestRefDate)).length;
+      }
 
       const q = appState.scanSearch.trim().toLowerCase();
       let filtered = res.filter(r => {
-        if (appState.scanFilter !== 'ALL' && r.statusCode !== appState.scanFilter) return false;
+        if (appState.scanFilter === 'COMPLETED' && r.statusCode !== 'COMPLETED') return false;
+        if (appState.scanFilter === 'ACTIVE' && r.step < 1) return false;
+        if (appState.scanFilter === 'RECENT5' && !isWithinRecent5Days(r.lastEventDate, latestRefDate)) return false;
         if (appState.scanSector !== 'ALL' && r.sector !== appState.scanSector) return false;
+        if (appState.scanTurnoverMin > 0 && (r.turnoverM || 0) < appState.scanTurnoverMin) return false;
         if (q && !r.symbol.toLowerCase().includes(q) && !r.name.toLowerCase().includes(q)) return false;
         return true;
       });
@@ -2406,21 +549,38 @@
       const dir = appState.scanSortAsc ? 1 : -1;
       filtered.sort((a, b) => {
         const va = a[key], vb = b[key];
-        if (va == null && vb == null) return 0;
-        if (va == null) return 1;
-        if (vb == null) return -1;
+        if ((va == null || va === '') && (vb == null || vb === '')) return 0;
+        if (va == null || va === '') return 1;
+        if (vb == null || vb === '') return -1;
         if (typeof va === 'string') return va.localeCompare(vb, 'zh-Hant') * dir;
-        if (va === vb) return b.step - a.step;
+        if (va === vb) return (b.step - a.step) || ((b.turnoverM || 0) - (a.turnoverM || 0));
         return (va - vb) * dir;
       });
 
+      // 分頁計算 (每頁 50 筆)
+      const totalFiltered = filtered.length;
+      const pageSize = appState.scanPageSize;
+      const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+      if (appState.scanPage > totalPages) appState.scanPage = totalPages;
+      if (appState.scanPage < 1) appState.scanPage = 1;
+
+      const startIdx = (appState.scanPage - 1) * pageSize;
+      const pageRows = filtered.slice(startIdx, startIdx + pageSize);
+
+      document.getElementById('scanPageInfo').textContent = totalFiltered
+        ? `顯示第 ${startIdx + 1} - ${Math.min(startIdx + pageSize, totalFiltered)} 筆，共 ${totalFiltered} 筆`
+        : '顯示第 0 - 0 筆，共 0 筆';
+      document.getElementById('scanPageNumLabel').textContent = `${appState.scanPage} / ${totalPages}`;
+      document.getElementById('scanPrevPageBtn').disabled = appState.scanPage <= 1;
+      document.getElementById('scanNextPageBtn').disabled = appState.scanPage >= totalPages;
+
       const tbody = document.getElementById('scannerTableBody');
-      if (!filtered.length) {
+      if (!pageRows.length) {
         tbody.innerHTML = `<tr><td colspan="11" class="py-10 text-center text-slate-500">沒有符合目前篩選條件的港股。</td></tr>`;
         return;
       }
 
-      tbody.innerHTML = filtered.map(r => {
+      tbody.innerHTML = pageRows.map(r => {
         const stCls = r.statusCode === 'COMPLETED'
           ? 'bg-emerald-500/20 text-bull border-emerald-500/40'
           : r.statusCode === 'ACTIVE'
@@ -2429,25 +589,26 @@
               ? 'bg-rose-500/15 text-bear border-rose-500/30'
               : 'bg-slate-800 text-slate-400 border-slate-700';
         const chgCls = r.changePct >= 0 ? 'text-bull' : 'text-bear';
-        const distTxt = r.distEpPct != null ? `${r.distEpPct >= 0 ? '+' : ''}${r.distEpPct.toFixed(2)}%` : '--';
-        const distCls = r.distEpPct == null ? 'text-slate-500' : Math.abs(r.distEpPct) <= 3 ? 'text-amberAccent font-bold' : 'text-slate-300';
+        const turnoverStr = r.turnoverM != null
+          ? (r.turnoverM >= 100 ? `${(r.turnoverM / 100).toFixed(2)}億` : `${r.turnoverM.toFixed(1)}M`)
+          : '--';
         const isWatched = appState.watchlist.some(w => w.symbol === r.symbol);
 
         return `
           <tr class="hover:bg-surfaceAlt/70 transition">
             <td class="py-2.5 px-4 font-mono font-bold text-white whitespace-nowrap">${r.symbol}</td>
             <td class="py-2.5 px-3 text-slate-200 whitespace-nowrap">${r.name}</td>
-            <td class="py-2.5 px-3 whitespace-nowrap"><span class="px-2 py-0.5 rounded bg-obsidian text-slate-400 text-[11px]">${r.sector}</span></td>
             <td class="py-2.5 px-3 font-mono text-right text-white">${formatPrice(r.price)}</td>
             <td class="py-2.5 px-3 font-mono text-right font-semibold ${chgCls}">${r.changePct >= 0 ? '+' : ''}${r.changePct.toFixed(2)}%</td>
+            <td class="py-2.5 px-3 font-mono text-right text-slate-300 whitespace-nowrap">${turnoverStr}</td>
             <td class="py-2.5 px-3 text-center whitespace-nowrap"><span class="px-2 py-0.5 rounded-lg bg-obsidian border border-borderDark font-mono font-bold text-white">Step ${r.step}/${r.maxStep}</span></td>
             <td class="py-2.5 px-3 font-mono text-right text-amberAccent">${formatPrice(r.epLevel)}</td>
             <td class="py-2.5 px-3 font-mono text-right text-bear">${formatPrice(r.resetLevel)}</td>
-            <td class="py-2.5 px-3 font-mono text-right ${distCls}">${distTxt}</td>
+            <td class="py-2.5 px-3 font-mono text-center text-slate-400 whitespace-nowrap">${r.lastEventDate || '--'}</td>
             <td class="py-2.5 px-3 whitespace-nowrap"><span class="px-2 py-0.5 rounded-full text-[11px] font-bold border ${stCls}">${r.statusText}</span></td>
             <td class="py-2.5 px-4 text-center whitespace-nowrap">
               <div class="inline-flex items-center gap-1.5">
-                <button data-jump-chart="${r.symbol}" class="px-2.5 py-1 rounded-lg bg-sky-500/15 hover:bg-sky-500 hover:text-slate-950 text-skyAccent border border-sky-500/30 text-[11px] font-semibold transition">圖表</button>
+                <button data-jump-chart="${r.symbol}" class="px-2.5 py-1 rounded-lg bg-sky-500/15 hover:bg-sky-500 hover:text-slate-950 text-skyAccent border border-sky-500/30 text-[11px] font-semibold transition">看圖</button>
                 <button data-toggle-watch="${r.symbol}" class="px-2 py-1 rounded-lg border text-[11px] font-bold transition ${isWatched ? 'bg-amber-500/20 border-amber-500/40 text-amberAccent' : 'bg-obsidian border-borderDark text-slate-400 hover:text-amberAccent'}" title="${isWatched ? '從自選移除' : '加入自選'}">${isWatched ? '★' : '☆'}</button>
               </div>
             </td>
@@ -2455,135 +616,17 @@
         `;
       }).join('');
     }
-
-    async function renderWatchlist(forceRescan = false) {
-      document.getElementById('navWatchlistCount').textContent = appState.watchlist.length;
-      const grid = document.getElementById('watchlistGrid');
-      if (!appState.watchlist.length) {
-        grid.innerHTML = `<div class="col-span-full bg-surface border border-borderDark rounded-2xl p-10 text-center text-xs text-slate-400">自選清單目前為空，請於上方輸入港股代號加入追蹤。</div>`;
-        return;
-      }
-
-      const cardsHtml = await Promise.all(appState.watchlist.map(async (item) => {
-        const meta = getStockMeta(item.symbol);
-        const data = await getStockBars(item.symbol, forceRescan);
-        const customSup = item.fixedSup !== '' && !isNaN(parseFloat(item.fixedSup))
-          ? parseFloat(item.fixedSup)
-          : appState.settings.fixedSup;
-        const eng = runComboEngine(data.bars, { ...appState.settings, fixedSup: customSup });
-
-        const stCls = eng.statusCode === 'COMPLETED'
-          ? 'bg-emerald-500/20 text-bull border-emerald-500/40'
-          : eng.statusCode === 'ACTIVE'
-            ? 'bg-sky-500/15 text-skyAccent border-sky-500/30'
-            : eng.statusCode === 'RESET'
-              ? 'bg-rose-500/15 text-bear border-rose-500/30'
-              : 'bg-slate-800 text-slate-400 border-slate-700';
-
-        return `
-          <div class="bg-surface border border-borderDark rounded-2xl p-4 flex flex-col justify-between gap-3">
-            <div class="flex items-start justify-between gap-2">
-              <div>
-                <div class="flex items-center gap-2">
-                  <span class="font-mono font-extrabold text-base text-white">${item.symbol}</span>
-                  <span class="text-xs text-slate-300 font-medium">${meta.name}</span>
-                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-obsidian text-slate-400">${meta.sector}</span>
-                </div>
-                <div class="flex items-center gap-2 mt-1">
-                  <span class="font-mono font-bold text-sm text-white">${formatPrice(eng.latestPrice)}</span>
-                  <span class="font-mono text-xs font-semibold ${eng.changePct >= 0 ? 'text-bull' : 'text-bear'}">${eng.changePct >= 0 ? '+' : ''}${eng.changePct.toFixed(2)}%</span>
-                </div>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${stCls}">${eng.statusText}</span>
-                <button data-remove-watch="${item.symbol}" class="p-1 rounded-lg hover:bg-rose-500/20 text-slate-500 hover:text-bear transition" title="移除">✕</button>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-3 gap-2 bg-obsidian rounded-xl p-2.5 border border-borderDark text-[11px]">
-              <div><span class="text-slate-500 block text-[10px]">組合進度</span><span class="font-mono font-bold text-white">Step ${eng.step}/${eng.maxStep}</span></div>
-              <div><span class="text-slate-500 block text-[10px]">EP 提示位</span><span class="font-mono font-semibold text-amberAccent">${formatPrice(eng.epLevel)}</span></div>
-              <div class="text-right"><span class="text-slate-500 block text-[10px]">Reset 位</span><span class="font-mono font-semibold text-bear">${formatPrice(eng.resetLevel)}</span></div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <input data-watch-note="${item.symbol}" type="text" value="${(item.note || '').replace(/"/g, '&quot;')}" placeholder="輸入自訂備註..." class="sm:col-span-2 bg-obsidian border border-borderDark rounded-lg px-2.5 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-skyAccent" />
-              <input data-watch-sup="${item.symbol}" type="number" step="0.05" value="${item.fixedSup}" placeholder="支持位(選填)" class="bg-obsidian border border-borderDark rounded-lg px-2.5 py-1.5 text-xs font-mono text-skyAccent placeholder-slate-600 focus:outline-none focus:border-skyAccent" />
-            </div>
-
-            <div class="flex items-center justify-between pt-1">
-              <span class="text-[10px] text-slate-500">組合: ${appState.settings.comboType}</span>
-              <button data-jump-chart="${item.symbol}" data-use-sup="${item.fixedSup}" class="px-3 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500 hover:text-slate-950 text-skyAccent border border-sky-500/30 text-xs font-bold transition">開啟圖表分析 →</button>
-            </div>
-          </div>
-        `;
-      }));
-
-      grid.innerHTML = cardsHtml.join('');
-    }
-
-    function renderFlashCardsGuide() {
-      const container = document.getElementById('flashCardsGrid');
-      container.innerHTML = Object.entries(COMBO_META).map(([key, meta]) => {
-        const dirBadge = meta.isUp
-          ? 'bg-emerald-500/15 text-bull border-emerald-500/30'
-          : 'bg-rose-500/15 text-bear border-rose-500/30';
-        return `
-          <div class="bg-surface border border-borderDark hover:border-sky-500/40 rounded-2xl p-5 flex flex-col justify-between gap-4 transition">
-            <div class="space-y-3">
-              <div class="flex items-center justify-between">
-                <h3 class="text-base font-extrabold text-white">${key}</h3>
-                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${dirBadge}">${meta.isUp ? '向上組合' : '向下組合'} · ${meta.maxStep} 步</span>
-              </div>
-              <p class="text-xs text-slate-400 leading-relaxed">${meta.desc}</p>
-              <div class="flex flex-wrap gap-1.5 pt-1">
-                ${meta.steps.map((st, idx) => `
-                  <span class="px-2 py-1 rounded-lg bg-obsidian border border-borderDark text-[11px] text-slate-200 font-medium">
-                    <b class="text-skyAccent font-mono">${idx + 1}.</b> ${st}
-                  </span>
-                `).join('')}
-              </div>
-            </div>
-            <button data-apply-combo="${key}" class="w-full py-2 rounded-xl bg-surfaceAlt hover:bg-sky-500 hover:text-slate-950 border border-borderDark text-xs font-bold text-skyAccent transition">
-              套用「${key}」並查看圖表 →
-            </button>
-          </div>
-        `;
-      }).join('');
-    }
-
-    // =========================================================================
-    // 8. 批量掃描與數據同步控制
-    // =========================================================================
-    async function runFullMarketScan(showToastOnDone = false) {
-      const btn = document.getElementById('runBatchScanBtn');
-      const progWrap = document.getElementById('scanProgressWrapper');
-      const progBar = document.getElementById('scanProgressBar');
-      const progText = document.getElementById('scanProgressText');
-      const progPct = document.getElementById('scanProgressPct');
-
-      btn.disabled = true;
-      progWrap.classList.remove('hidden');
-
-      const targets = [...appState.stocks];
-      const total = targets.length;
-      const concurrency = appState.dataSource === 'live' ? 4 : 16;
-      const results = [];
-      let done = 0;
-
-      for (let i = 0; i < total; i += concurrency) {
-        const chunk = targets.slice(i, i + concurrency);
-        const chunkData = await Promise.all(chunk.map(async (st) => {
-          try {
-            const data = await getStockBars(st.symbol, false);
-            const eng = runComboEngine(data.bars, appState.settings);
-            const latestEvent = eng.events.length ? eng.events[eng.events.length - 1] : null;
+<!-- ... existing code ... -->
             return {
               symbol: st.symbol,
               name: st.name,
               sector: st.sector,
               price: eng.latestPrice,
               changePct: eng.changePct,
+              turnoverM: data.bars.length ? Number(((data.bars[data.bars.length - 1].close * (data.bars[data.bars.length - 1].volume || 0)) / 1e6).toFixed(2)) : 0,
+              lastDate: data.bars.length ? data.bars[data.bars.length - 1].date : '',
+              lastEvent: latestEvent ? latestEvent.label : '',
+              lastEventDate: latestEvent ? latestEvent.date : '',
               statusCode: eng.statusCode,
               statusText: eng.statusText,
               statusOrder: eng.statusOrder,
@@ -2597,81 +640,33 @@
               latestEvent,
               bars: data.bars
             };
-          } catch (e) {
-            return null;
-          }
-        }));
-        chunkData.forEach(item => { if (item) results.push(item); });
-        done += chunk.length;
-        const pct = Math.round((done / total) * 100);
-        progBar.style.width = `${pct}%`;
-        progPct.textContent = `${pct}%`;
-        progText.textContent = `正在掃描 ${done} / ${total} 隻港股 (${appState.settings.comboType})...`;
-        if (appState.dataSource === 'live') await new Promise(r => setTimeout(r, 10));
-      }
-
-      appState.scanResults = results;
-      renderDashboard();
-      renderScannerTable();
-      if (appState.activeView === 'watchlist') renderWatchlist(false);
-
-      btn.disabled = false;
-      setTimeout(() => progWrap.classList.add('hidden'), 600);
-      if (showToastOnDone) {
-        showToast(`全港股掃描完成！共分析 ${results.length} 隻股票 (${appState.settings.comboType})`, 'success');
-      }
-    }
-
-    async function loadChartStock(symbol, forceRefresh = false, customFixedSup = null) {
-      const norm = normalizeHkSymbol(symbol);
-      if (!norm) { showToast('請輸入有效港股代號 (例如 0700、9988)', 'warn'); return; }
-      const meta = ensureStockInDatabase(norm);
-
-      if (customFixedSup !== null && customFixedSup !== '' && !isNaN(parseFloat(customFixedSup))) {
-        appState.settings.fixedSup = parseFloat(customFixedSup);
-        document.getElementById('fixedSupInput').value = appState.settings.fixedSup;
-      }
-
-      appState.currentSymbol = meta.symbol;
-      appState.currentName = meta.name;
-      appState.currentSector = meta.sector;
-      document.getElementById('chartStockSelect').value = meta.symbol;
-
-      const loader = document.getElementById('chartLoadingOverlay');
-      loader.classList.remove('hidden');
-      try {
-        const res = await getStockBars(meta.symbol, forceRefresh);
-        appState.bars = res.bars;
-        appState.activeSourceTag = res.sourceTag;
-        if (res.liveName && meta.name.startsWith('港股 ')) {
-          meta.name = res.liveName;
-          appState.currentName = res.liveName;
-          populateChartStockSelect();
-        }
-        appState.chartView.endIdx = appState.bars.length - 1;
-        appState.chartView.startIdx = Math.max(0, appState.bars.length - 130);
-        updateChartUI();
-      } catch (e) {
-        showToast(`載入 ${norm} 失敗：${e.message}`, 'error');
-      } finally {
-        loader.classList.add('hidden');
-      }
-    }
-
+<!-- ... existing code ... -->
     function exportScanResultsToCSV() {
       if (!appState.scanResults.length) {
         showToast('尚無掃描結果可供匯出。', 'warn');
         return;
       }
-      const headers = ['代號', '名稱', '板塊', '組合類型', '時光機起點', '現價', '升跌幅(%)', '組合進度', 'EP觸發價', '重數止損價', '距EP(%)', '狀態', '數據源'];
-      const rows = appState.scanResults.map(r => [
-        r.symbol, r.name, r.sector, appState.settings.comboType, appState.settings.startDate,
+      const latestRefDate = appState.scanResults.reduce((acc, r) => (r.lastDate && r.lastDate > acc ? r.lastDate : acc), '');
+      const q = appState.scanSearch.trim().toLowerCase();
+      const filtered = appState.scanResults.filter(r => {
+        if (appState.scanFilter === 'COMPLETED' && r.statusCode !== 'COMPLETED') return false;
+        if (appState.scanFilter === 'ACTIVE' && r.step < 1) return false;
+        if (appState.scanFilter === 'RECENT5' && !isWithinRecent5Days(r.lastEventDate, latestRefDate)) return false;
+        if (appState.scanSector !== 'ALL' && r.sector !== appState.scanSector) return false;
+        if (appState.scanTurnoverMin > 0 && (r.turnoverM || 0) < appState.scanTurnoverMin) return false;
+        if (q && !r.symbol.toLowerCase().includes(q) && !r.name.toLowerCase().includes(q)) return false;
+        return true;
+      });
+      const headers = ['代號', '名稱', '組合類型', '現價', '漲跌幅(%)', '成交額(HK$M)', '步數進度', 'EP觸發價', 'Reset止損價', '最後事件日', '狀態', '數據源'];
+      const rows = filtered.map(r => [
+        r.symbol, r.name, appState.settings.comboType,
         r.price != null ? r.price.toFixed(3) : '',
         r.changePct != null ? r.changePct.toFixed(2) : '',
+        r.turnoverM != null ? r.turnoverM.toFixed(2) : '',
         `Step ${r.step}/${r.maxStep}`,
         r.epLevel != null ? r.epLevel.toFixed(3) : '',
         r.resetLevel != null ? r.resetLevel.toFixed(3) : '',
-        r.distEpPct != null ? r.distEpPct.toFixed(2) + '%' : '',
+        r.lastEventDate || '',
         r.statusText, r.sourceTag
       ]);
       const csv = '\uFEFF' + [headers, ...rows].map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -2679,386 +674,28 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `SkySir_HKEX_${appState.settings.comboType}_${appState.settings.startDate}.csv`;
+      a.download = `SkySir_HKConnect_${appState.settings.comboType}_${new Date().toISOString().slice(0, 10)}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      showToast('已匯出 UTF-8 CSV 掃描報表！', 'success');
+      showToast(`已匯出 ${filtered.length} 筆港股通 CSV 報表！`, 'success');
     }
-
-    // =========================================================================
-    // 9. 自選清單 LocalStorage 管理 & 導覽切換
-    // =========================================================================
-    function loadWatchlistFromStorage() {
-      try {
-        const raw = localStorage.getItem(WATCHLIST_STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) { appState.watchlist = parsed; return; }
-        }
-      } catch (e) {}
-      appState.watchlist = [...DEFAULT_WATCHLIST];
-      saveWatchlistToStorage();
-    }
-
-    function saveWatchlistToStorage() {
-      try { localStorage.setItem(WATCHLIST_STORAGE_KEY, JSON.stringify(appState.watchlist)); } catch (e) {}
-      document.getElementById('navWatchlistCount').textContent = appState.watchlist.length;
-    }
-
-    function toggleWatchlistSymbol(symbol) {
-      const norm = normalizeHkSymbol(symbol);
-      if (!norm) return;
-      ensureStockInDatabase(norm);
-      const idx = appState.watchlist.findIndex(w => w.symbol === norm);
-      if (idx >= 0) {
-        appState.watchlist.splice(idx, 1);
-        showToast(`已從自選清單移除 ${norm}`, 'info');
-      } else {
-        appState.watchlist.unshift({ symbol: norm, note: '', fixedSup: '' });
-        showToast(`已將 ${norm} 加入自選清單`, 'success');
-      }
-      saveWatchlistToStorage();
-      renderScannerTable();
-      if (appState.activeView === 'chart') updateChartUI();
-      if (appState.activeView === 'watchlist') renderWatchlist(false);
-    }
-
-    function navigateTo(viewName) {
-      appState.activeView = viewName;
-      document.querySelectorAll('.view-section').forEach(sec => sec.classList.add('hidden'));
-      const target = document.getElementById(`view-${viewName}`);
-      if (target) target.classList.remove('hidden');
-
-      // 更新桌面與手機導覽按鈕樣式
-      document.querySelectorAll('.nav-btn').forEach(btn => {
-        const active = btn.dataset.nav === viewName;
-        btn.className = active
-          ? 'nav-btn px-3.5 py-1.5 rounded-lg text-xs font-bold transition bg-surfaceAlt text-white shadow flex items-center gap-1.5'
-          : 'nav-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white flex items-center gap-1.5';
-      });
-      document.querySelectorAll('.nav-btn-mobile').forEach(btn => {
-        const active = btn.dataset.nav === viewName;
-        btn.classList.toggle('bg-surfaceAlt', active);
-        btn.classList.toggle('text-white', active);
-        btn.classList.toggle('text-slate-400', !active);
-      });
-      document.getElementById('mobileNavDrawer').classList.add('hidden');
-
-      if (viewName === 'chart') {
-        setTimeout(() => renderChart(), 25);
-      } else if (viewName === 'watchlist') {
-        renderWatchlist(false);
-      } else if (viewName === 'dashboard') {
-        renderDashboard();
-      }
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    function populateChartStockSelect() {
-      const sel = document.getElementById('chartStockSelect');
-      sel.innerHTML = appState.stocks.map(s => `<option value="${s.symbol}">${s.symbol} · ${s.name} (${s.sector})</option>`).join('');
-      sel.value = appState.currentSymbol;
-    }
-
-    function syncComboMetaUI() {
-      const meta = COMBO_META[appState.settings.comboType];
-      document.getElementById('comboTypeSelect').value = appState.settings.comboType;
-      document.getElementById('dashComboSelect').value = appState.settings.comboType;
-      document.getElementById('scanComboSelect').value = appState.settings.comboType;
-      document.getElementById('comboDescText').textContent = meta.desc;
-      const badge = document.getElementById('chartComboDirBadge');
-      badge.textContent = meta.isUp ? '向上組合' : '向下組合';
-      badge.className = meta.isUp
-        ? 'text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-bull border border-emerald-500/30 font-semibold'
-        : 'text-[10px] px-2 py-0.5 rounded-full bg-rose-500/15 text-bear border border-rose-500/30 font-semibold';
-    }
-
-    // =========================================================================
-    // 10. Canvas 互動事件 & CSV 拖放初始化
-    // =========================================================================
-    function initChartInteractions() {
-      const canvas = document.getElementById('candlestickCanvas');
-      const wrapper = document.getElementById('canvasWrapper');
-      const dropZone = document.getElementById('chartDropZone');
-
-      const getIdxFromX = (clientX) => {
-        const rect = canvas.getBoundingClientRect();
-        const x = clientX - rect.left;
-        const padLeft = 10, padRight = 68;
-        const plotW = rect.width - padLeft - padRight;
-        const s = appState.chartView.startIdx, e = appState.chartView.endIdx;
-        const count = e - s + 1;
-        if (x < padLeft || x > rect.width - padRight || count <= 0) return -1;
-        return Math.max(s, Math.min(e, s + Math.floor(((x - padLeft) / plotW) * count)));
-      };
-
-      const applyZoom = (factor) => {
-        const total = appState.bars.length;
-        if (total < 15) return;
-        const s = appState.chartView.startIdx, e = appState.chartView.endIdx;
-        const newCount = Math.max(20, Math.min(total, Math.round((e - s + 1) * factor)));
-        const ns = Math.max(0, e - newCount + 1);
-        appState.chartView.startIdx = ns;
-        appState.chartView.endIdx = Math.min(total - 1, ns + newCount - 1);
-        renderChart();
-      };
-
-      canvas.addEventListener('wheel', (ev) => {
-        ev.preventDefault();
-        applyZoom(ev.deltaY > 0 ? 1.15 : 0.85);
-      }, { passive: false });
-
-      canvas.addEventListener('mousedown', (ev) => {
-        appState.chartView.isDragging = true;
-        appState.chartView.dragStartX = ev.clientX;
-        appState.chartView.dragStartIdx = appState.chartView.startIdx;
-        appState.chartView.dragEndIdx = appState.chartView.endIdx;
-      });
-      window.addEventListener('mouseup', () => { appState.chartView.isDragging = false; });
-
-      canvas.addEventListener('mousemove', (ev) => {
-        const rect = canvas.getBoundingClientRect();
-        const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
-        if (appState.chartView.isDragging) {
-          const plotW = Math.max(100, rect.width - 78);
-          const count = appState.chartView.dragEndIdx - appState.chartView.dragStartIdx + 1;
-          const dxBars = Math.round(((ev.clientX - appState.chartView.dragStartX) / plotW) * count);
-          const total = appState.bars.length;
-          let ns = appState.chartView.dragStartIdx - dxBars;
-          let ne = appState.chartView.dragEndIdx - dxBars;
-          if (ns < 0) { ne -= ns; ns = 0; }
-          if (ne >= total) { ns -= (ne - total + 1); ne = total - 1; }
-          appState.chartView.startIdx = Math.max(0, ns);
-          appState.chartView.endIdx = Math.min(total - 1, ne);
-          renderChart();
-          return;
-        }
-        const idx = getIdxFromX(ev.clientX);
-        appState.chartView.hoverIdx = idx;
-        appState.chartView.hoverX = mx;
-        appState.chartView.hoverY = my;
-        renderChart();
-        updateChartHudAndTooltip(idx, mx, my);
-      });
-
-      canvas.addEventListener('mouseleave', () => {
-        appState.chartView.hoverIdx = -1;
-        document.getElementById('chartTooltip').classList.add('hidden');
-        renderChart();
-      });
-
-      // 觸控拖曳
-      canvas.addEventListener('touchstart', (ev) => {
-        if (ev.touches.length === 1) {
-          appState.chartView.isDragging = true;
-          appState.chartView.dragStartX = ev.touches[0].clientX;
-          appState.chartView.dragStartIdx = appState.chartView.startIdx;
-          appState.chartView.dragEndIdx = appState.chartView.endIdx;
-        }
-      }, { passive: true });
-      canvas.addEventListener('touchmove', (ev) => {
-        if (ev.touches.length === 1 && appState.chartView.isDragging) {
-          const rect = canvas.getBoundingClientRect();
-          const plotW = Math.max(100, rect.width - 78);
-          const count = appState.chartView.dragEndIdx - appState.chartView.dragStartIdx + 1;
-          const dxBars = Math.round(((ev.touches[0].clientX - appState.chartView.dragStartX) / plotW) * count);
-          const total = appState.bars.length;
-          let ns = appState.chartView.dragStartIdx - dxBars;
-          let ne = appState.chartView.dragEndIdx - dxBars;
-          if (ns < 0) { ne -= ns; ns = 0; }
-          if (ne >= total) { ns -= (ne - total + 1); ne = total - 1; }
-          appState.chartView.startIdx = Math.max(0, ns);
-          appState.chartView.endIdx = Math.min(total - 1, ne);
-          renderChart();
-        }
-      }, { passive: true });
-      canvas.addEventListener('touchend', () => { appState.chartView.isDragging = false; });
-
-      document.getElementById('zoomInBtn').addEventListener('click', () => applyZoom(0.75));
-      document.getElementById('zoomOutBtn').addEventListener('click', () => applyZoom(1.3));
-      document.getElementById('resetZoomBtn').addEventListener('click', () => {
-        const total = appState.bars.length;
-        appState.chartView.endIdx = total - 1;
-        appState.chartView.startIdx = Math.max(0, total - 130);
-        renderChart();
-      });
-
-      new ResizeObserver(() => renderChart()).observe(wrapper);
-
-      // CSV 檔案載入共用處理
-      const handleCSVFile = (file) => {
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          try {
-            const bars = parseCSVToBars(ev.target.result);
-            appState.bars = bars;
-            appState.currentSymbol = file.name.replace(/\.csv$/i, '').toUpperCase();
-            appState.currentName = 'CSV 自訂匯入';
-            appState.currentSector = 'CSV';
-            appState.activeSourceTag = 'CSV 匯入';
-            appState.chartView.endIdx = bars.length - 1;
-            appState.chartView.startIdx = Math.max(0, bars.length - 130);
-            navigateTo('chart');
-            updateChartUI();
-            showToast(`成功匯入 ${file.name} (${bars.length} 根 K 線)`, 'success');
-          } catch (err) {
-            showToast(`CSV 解析失敗：${err.message}`, 'error');
-          }
-        };
-        reader.readAsText(file);
-      };
-
-      document.getElementById('csvFileInput').addEventListener('change', (e) => {
-        handleCSVFile(e.target.files?.[0]);
-        e.target.value = '';
-      });
-
-      ['dragenter', 'dragover'].forEach(evName => {
-        dropZone.addEventListener(evName, (e) => { e.preventDefault(); dropZone.classList.add('drop-active'); });
-      });
-      ['dragleave', 'drop'].forEach(evName => {
-        dropZone.addEventListener(evName, (e) => { e.preventDefault(); dropZone.classList.remove('drop-active'); });
-      });
-      dropZone.addEventListener('drop', (e) => {
-        const file = e.dataTransfer?.files?.[0];
-        if (file && file.name.toLowerCase().endsWith('.csv')) handleCSVFile(file);
-        else showToast('請拖放有效的 .csv 檔案', 'warn');
-      });
-    }
-
-    // =========================================================================
-    // 11. 應用程式啟動與全域事件綁定
-    // =========================================================================
-    function updateMarketStatusBadge() {
-      const now = new Date();
-      // 簡易港股交易時段狀態顯示 (HKT)
-      const h = now.getHours(), m = now.getMinutes(), d = now.getDay();
-      const mins = h * 60 + m;
-      const isWeekday = d >= 1 && d <= 5;
-      const isOpen = isWeekday && ((mins >= 570 && mins <= 720) || (mins >= 780 && mins <= 960));
-      const dot = document.getElementById('marketStatusDot');
-      const txt = document.getElementById('marketStatusText');
-      if (isOpen) {
-        dot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
-        txt.textContent = 'HKEX 交易中';
-      } else {
-        dot.className = 'w-2 h-2 rounded-full bg-slate-500';
-        txt.textContent = 'HKEX 已收市';
-      }
-    }
-
-    function initApp() {
-      loadBrandConfigFromStorage();
-      applyBrandAndTheme(false);
-      loadWatchlistFromStorage();
-      populateChartStockSelect();
-      syncComboMetaUI();
-      renderFlashCardsGuide();
-      initChartInteractions();
-      updateMarketStatusBadge();
-
-      // 品牌與主題客製化中心互動綁定
-      document.getElementById('openThemeDrawerBtn').addEventListener('click', openThemeDrawer);
-      document.getElementById('closeThemeDrawerBtn').addEventListener('click', closeThemeDrawer);
-      document.getElementById('themeDrawerBackdrop').addEventListener('click', closeThemeDrawer);
-
-      document.getElementById('cfgBrandTitle').addEventListener('input', (e) => {
-        appState.brandConfig.brandTitle = e.target.value;
-        applyBrandAndTheme(false);
-      });
-      document.getElementById('cfgBrandSubtitle').addEventListener('input', (e) => {
-        appState.brandConfig.brandSubtitle = e.target.value;
-        applyBrandAndTheme(false);
-      });
-      document.getElementById('cfgLogoBadge').addEventListener('input', (e) => {
-        appState.brandConfig.logoBadge = e.target.value;
-        applyBrandAndTheme(false);
-      });
-      document.getElementById('cfgFooterText').addEventListener('input', (e) => {
-        appState.brandConfig.footerText = e.target.value;
-        applyBrandAndTheme(false);
-      });
-
-      document.querySelectorAll('.logo-preset-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          appState.brandConfig.logoBadge = btn.dataset.logoPreset;
-          applyBrandAndTheme(false);
-        });
-      });
-
-      // 點擊 6 套精選主題預設
-      document.getElementById('themePresetGrid').addEventListener('click', (e) => {
-        const card = e.target.closest('[data-theme-preset]');
-        if (!card) return;
-        const preset = THEME_PRESETS.find(p => p.id === card.dataset.themePreset);
-        if (!preset) return;
-        appState.brandConfig.themeId = preset.id;
-        appState.brandConfig.hkStyle = preset.hkStyle;
-        appState.brandConfig.colors = { ...preset.colors };
-        applyBrandAndTheme(true);
-        showToast(`已套用主題：${preset.name}`, 'success');
-      });
-
-      // 獨立切換 美式綠升紅跌 / 港式紅升綠跌 (於任何主題皆可即時翻轉)
-      const setBullBearConvention = (useHkStyle) => {
-        if (appState.brandConfig.hkStyle === useHkStyle) return;
-        appState.brandConfig.hkStyle = useHkStyle;
-        const prevBull = appState.brandConfig.colors.bull;
-        appState.brandConfig.colors.bull = appState.brandConfig.colors.bear;
-        appState.brandConfig.colors.bear = prevBull;
-        applyBrandAndTheme(true);
-        showToast(useHkStyle ? '已切換為港式「紅升綠跌」慣例' : '已切換為美式「綠升紅跌」慣例', 'info');
-      };
-      document.getElementById('convUsBtn').addEventListener('click', () => setBullBearConvention(false));
-      document.getElementById('convHkBtn').addEventListener('click', () => setBullBearConvention(true));
-
-      // 5 組自訂色盤即時預覽
-      const bindColorPicker = (id, key) => {
-        document.getElementById(id).addEventListener('input', (e) => {
-          appState.brandConfig.themeId = 'custom';
-          appState.brandConfig.colors[key] = e.target.value;
-          applyBrandAndTheme(true);
-        });
-      };
-      bindColorPicker('pickAccent', 'accent');
-      bindColorPicker('pickBgMain', 'bgMain');
-      bindColorPicker('pickBgCard', 'bgCard');
-      bindColorPicker('pickBull', 'bull');
-      bindColorPicker('pickBear', 'bear');
-
-      // 一鍵複製客製化預設碼 (DEFAULT_BRAND_CONFIG)
-      document.getElementById('copyBrandConfigBtn').addEventListener('click', () => {
-        const snippet = `const DEFAULT_BRAND_CONFIG = ${JSON.stringify(appState.brandConfig, null, 2)};`;
-        copyTextFallback(snippet);
-      });
-
-      // 重設為預設值
-      document.getElementById('resetBrandThemeBtn').addEventListener('click', () => {
-        appState.brandConfig = JSON.parse(JSON.stringify(DEFAULT_BRAND_CONFIG));
-        applyBrandAndTheme(true);
-        showToast('已重設為預設品牌標題與配色', 'info');
-      });
-
-      // 導覽切換
-      document.getElementById('brandHomeBtn').addEventListener('click', () => navigateTo('dashboard'));
-      document.querySelectorAll('[data-nav]').forEach(btn => {
-        btn.addEventListener('click', () => navigateTo(btn.dataset.nav));
-      });
-      document.getElementById('mobileNavToggle').addEventListener('click', () => {
-        document.getElementById('mobileNavDrawer').classList.toggle('hidden');
-      });
-
-      // 全站快速搜尋港股
+<!-- ... existing code ... -->
+      // 全站快速搜尋港股 (支援代號或中文名稱搜尋 550+ 隻港股通)
       const handleGlobalSearch = () => {
-        const raw = document.getElementById('globalSearchInput').value;
-        const norm = normalizeHkSymbol(raw);
-        if (!norm) { showToast('請輸入 4–5 位港股代號 (如 0700、9988)', 'warn'); return; }
+        const raw = document.getElementById('globalSearchInput').value.trim();
+        if (!raw) { showToast('請輸入港股代號或中文名 (如 1658、騰訊、郵儲)', 'warn'); return; }
+        let targetSymbol = normalizeHkSymbol(raw);
+        if (!targetSymbol) {
+          const lower = raw.toLowerCase();
+          const matched = appState.stocks.find(s => s.name.toLowerCase().includes(lower));
+          if (matched) targetSymbol = matched.symbol;
+        }
+        if (!targetSymbol) { showToast(`找不到符合「${raw}」的港股，請輸入 4–5 位代號或正確名稱`, 'warn'); return; }
         document.getElementById('globalSearchInput').value = '';
         navigateTo('chart');
-        loadChartStock(norm, false);
+        loadChartStock(targetSymbol, false);
       };
       document.getElementById('globalSearchBtn').addEventListener('click', handleGlobalSearch);
       document.getElementById('globalSearchInput').addEventListener('keydown', (e) => {
@@ -3066,6 +703,10 @@
       });
 
       // Dashboard 快捷操作
+      document.getElementById('dashReloadCloudBtn').addEventListener('click', async () => {
+        const ok = await loadCloudScanResults(true);
+        if (!ok) runFullMarketScan(true);
+      });
       document.getElementById('dashRunScanBtn').addEventListener('click', () => runFullMarketScan(true));
       document.getElementById('dashGoChartBtn').addEventListener('click', () => navigateTo('chart'));
       document.getElementById('dashSeeAllScannerBtn').addEventListener('click', () => navigateTo('scanner'));
@@ -3075,94 +716,27 @@
         appState.settings.comboType = newCombo;
         syncComboMetaUI();
         updateChartUI();
-        runFullMarketScan(false);
+        if (appState.cloudLoaded) applyCloudScanToState();
+        else runFullMarketScan(false);
       };
-      document.getElementById('dashComboSelect').addEventListener('change', (e) => onComboChanged(e.target.value));
-      document.getElementById('comboTypeSelect').addEventListener('change', (e) => onComboChanged(e.target.value));
-      document.getElementById('scanComboSelect').addEventListener('change', (e) => onComboChanged(e.target.value));
-
-      // Chart 參數變更
-      const onChartParamChanged = () => {
-        appState.settings.startDate = document.getElementById('startDateInput').value;
-        appState.settings.useReset = document.getElementById('useResetToggle').checked;
-        appState.settings.isLoose = document.getElementById('isLooseToggle').checked;
-        appState.settings.fixedSup = parseFloat(document.getElementById('fixedSupInput').value) || 50.0;
-        appState.settings.showTable = document.getElementById('showTableToggle').checked;
-        appState.settings.showBg = document.getElementById('showBgToggle').checked;
-        updateChartUI();
-        runFullMarketScan(false);
-      };
-      ['startDateInput', 'useResetToggle', 'isLooseToggle', 'fixedSupInput', 'showTableToggle', 'showBgToggle']
-        .forEach(id => document.getElementById(id).addEventListener('change', onChartParamChanged));
-
-      document.getElementById('chartStockSelect').addEventListener('change', (e) => loadChartStock(e.target.value));
-      document.getElementById('refreshStockBtn').addEventListener('click', () => loadChartStock(appState.currentSymbol, true));
-      document.getElementById('chartToggleWatchBtn').addEventListener('click', () => toggleWatchlistSymbol(appState.currentSymbol));
-      document.getElementById('toggleChartSidebarBtn').addEventListener('click', () => {
-        document.getElementById('chartSidebar').classList.toggle('hidden');
-        setTimeout(() => renderChart(), 25);
-      });
-
-      document.getElementById('dataSourceSelect').addEventListener('change', (e) => {
-        appState.dataSource = e.target.value;
-        showToast(appState.dataSource === 'live' ? '已切換至即時港股數據 (Yahoo Proxy)' : '已切換至模擬演示數據', 'info');
-        loadChartStock(appState.currentSymbol, true);
-        runFullMarketScan(false);
-      });
-
-      document.getElementById('autoSupBtn').addEventListener('click', () => {
-        if (!appState.bars.length) return;
-        const recent = appState.bars.slice(-60);
-        const minL = Math.min(...recent.map(b => b.low)), maxH = Math.max(...recent.map(b => b.high));
-        const est = Number((minL + (maxH - minL) * 0.25).toFixed(2));
-        document.getElementById('fixedSupInput').value = est;
-        onChartParamChanged();
-        showToast(`已自動填入支持價位：${est}`, 'info');
-      });
-
-      document.querySelectorAll('.preset-date-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const base = appState.bars.length ? new Date(appState.bars[appState.bars.length - 1].date + 'T00:00:00') : new Date(2026, 10, 19);
-          if (btn.dataset.preset === '3M') base.setMonth(base.getMonth() - 3);
-          if (btn.dataset.preset === '6M') base.setMonth(base.getMonth() - 6);
-          if (btn.dataset.preset === '1Y') base.setFullYear(base.getFullYear() - 1);
-          document.getElementById('startDateInput').value = formatDateISO(base);
-          onChartParamChanged();
-        });
-      });
-
-      document.querySelectorAll('.range-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          document.querySelectorAll('.range-btn').forEach(b => {
-            b.className = 'range-btn px-2.5 py-1 text-xs rounded-lg text-slate-400 hover:text-white transition';
-          });
-          btn.className = 'range-btn px-2.5 py-1 text-xs rounded-lg bg-surfaceAlt text-white font-semibold transition';
-          const count = parseInt(btn.dataset.range, 10);
-          const total = appState.bars.length;
-          appState.chartView.endIdx = total - 1;
-          appState.chartView.startIdx = Math.max(0, total - count);
-          renderChart();
-        });
-      });
-
+<!-- ... existing code ... -->
       // Scanner 互動
+      document.getElementById('scanReloadCloudBtn').addEventListener('click', async () => {
+        const ok = await loadCloudScanResults(true);
+        if (!ok) runFullMarketScan(true);
+      });
       document.getElementById('runBatchScanBtn').addEventListener('click', () => runFullMarketScan(true));
       document.getElementById('exportScanCsvBtn').addEventListener('click', exportScanResultsToCSV);
-      document.getElementById('scanSearchInput').addEventListener('input', (e) => { appState.scanSearch = e.target.value; renderScannerTable(); });
-      document.getElementById('scanSectorSelect').addEventListener('change', (e) => { appState.scanSector = e.target.value; renderScannerTable(); });
-
-      document.getElementById('scanAddTickerBtn').addEventListener('click', () => {
-        const norm = normalizeHkSymbol(document.getElementById('scanAddTickerInput').value);
-        if (!norm) { showToast('請輸入有效港股代號', 'warn'); return; }
-        ensureStockInDatabase(norm);
-        document.getElementById('scanAddTickerInput').value = '';
-        showToast(`已將 ${norm} 加入掃描名單，正在重新掃描...`, 'info');
-        runFullMarketScan(true);
-      });
-
+      document.getElementById('scanSearchInput').addEventListener('input', (e) => { appState.scanSearch = e.target.value; appState.scanPage = 1; renderScannerTable(); });
+      document.getElementById('scanTurnoverSelect').addEventListener('change', (e) => { appState.scanTurnoverMin = parseFloat(e.target.value) || 0; appState.scanPage = 1; renderScannerTable(); });
+      document.getElementById('scanSectorSelect').addEventListener('change', (e) => { appState.scanSector = e.target.value; appState.scanPage = 1; renderScannerTable(); });
+      document.getElementById('scanPrevPageBtn').addEventListener('click', () => { if (appState.scanPage > 1) { appState.scanPage--; renderScannerTable(); } });
+      document.getElementById('scanNextPageBtn').addEventListener('click', () => { appState.scanPage++; renderScannerTable(); });
+<!-- ... existing code ... -->
       document.querySelectorAll('.scan-filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           appState.scanFilter = btn.dataset.filter;
+          appState.scanPage = 1;
           document.querySelectorAll('.scan-filter-btn').forEach(b => b.classList.remove('border-skyAccent', 'bg-surfaceAlt', 'text-white'));
           btn.classList.add('border-skyAccent', 'bg-surfaceAlt');
           renderScannerTable();
@@ -3174,86 +748,17 @@
           const k = th.dataset.sort;
           if (appState.scanSortKey === k) appState.scanSortAsc = !appState.scanSortAsc;
           else { appState.scanSortKey = k; appState.scanSortAsc = (k === 'symbol' || k === 'name' || k === 'sector'); }
+          appState.scanPage = 1;
           renderScannerTable();
         });
       });
-
-      // Watchlist 互動
-      document.getElementById('watchAddBtn').addEventListener('click', () => {
-        const norm = normalizeHkSymbol(document.getElementById('watchAddInput').value);
-        if (!norm) { showToast('請輸入有效港股代號', 'warn'); return; }
-        if (!appState.watchlist.some(w => w.symbol === norm)) {
-          ensureStockInDatabase(norm);
-          appState.watchlist.unshift({ symbol: norm, note: '', fixedSup: '' });
-          saveWatchlistToStorage();
-          showToast(`已將 ${norm} 加入自選清單`, 'success');
-          renderWatchlist(false);
-        } else {
-          showToast(`${norm} 已在自選清單中`, 'info');
-        }
-        document.getElementById('watchAddInput').value = '';
-      });
-      document.getElementById('watchScanBtn').addEventListener('click', async () => {
-        await renderWatchlist(true);
-        showToast('自選清單掃描完成！', 'success');
-      });
-
-      document.getElementById('watchlistGrid').addEventListener('input', (e) => {
-        const noteSym = e.target.dataset.watchNote;
-        const supSym = e.target.dataset.watchSup;
-        if (noteSym) {
-          const item = appState.watchlist.find(w => w.symbol === noteSym);
-          if (item) { item.note = e.target.value; saveWatchlistToStorage(); }
-        } else if (supSym) {
-          const item = appState.watchlist.find(w => w.symbol === supSym);
-          if (item) { item.fixedSup = e.target.value; saveWatchlistToStorage(); }
-        }
-      });
-
-      // 複製 GitHub Pages 部署步驟
-      document.getElementById('copyDeployGuideBtn').addEventListener('click', () => {
-        const guideText = [
-          'Sky Sir Combo Alert Engine — GitHub Pages 部署步驟：',
-          '1. 登入 GitHub，建立新的 Public Repository（例如 skysir-hkex-scanner）。',
-          '2. 點擊 Add file -> Upload files，將此單一檔案命名為 index.html 上傳並 Commit。',
-          '3. 前往 Settings -> Pages，Branch 選擇 main 與 / (root)，按 Save。',
-          '4. 等待約 1 分鐘即可透過 https://<你的GitHub帳號>.github.io/<儲存庫名稱>/ 開啟網站！'
-        ].join('\n');
-        copyTextFallback(guideText);
-      });
-
-      // 全域委派點擊 (跳轉圖表、加入/移除自選、套用 Flash Card 組合)
-      document.body.addEventListener('click', (e) => {
-        const jumpEl = e.target.closest('[data-jump-chart]');
-        if (jumpEl && !e.target.closest('[data-toggle-watch]') && !e.target.closest('[data-remove-watch]')) {
-          const sym = jumpEl.dataset.jumpChart;
-          const sup = jumpEl.dataset.useSup ?? null;
-          navigateTo('chart');
-          loadChartStock(sym, false, sup);
-          return;
-        }
-        const toggleW = e.target.closest('[data-toggle-watch]');
-        if (toggleW) {
-          toggleWatchlistSymbol(toggleW.dataset.toggleWatch);
-          return;
-        }
-        const remW = e.target.closest('[data-remove-watch]');
-        if (remW) {
-          toggleWatchlistSymbol(remW.dataset.removeWatch);
-          return;
-        }
-        const applyCombo = e.target.closest('[data-apply-combo]');
-        if (applyCombo) {
-          onComboChanged(applyCombo.dataset.applyCombo);
-          navigateTo('chart');
-          showToast(`已套用「${applyCombo.dataset.applyCombo}」組合`, 'success');
-        }
-      });
-
-      // 啟動：預先載入騰訊圖表與全港股掃描，顯示總覽頁
+<!-- ... existing code ... -->
+      // 啟動：優先自動載入雲端港股通 ./scan_results.json，失敗時自動回退本地掃描
       navigateTo('dashboard');
       loadChartStock('0700.HK', false);
-      runFullMarketScan(false);
+      loadCloudScanResults(false).then(loaded => {
+        if (!loaded) runFullMarketScan(false);
+      });
     }
 
     window.addEventListener('DOMContentLoaded', initApp);
