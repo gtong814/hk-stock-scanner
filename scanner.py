@@ -1,9 +1,11 @@
+import io
 import json
-import math
+import re
 import time
 from datetime import datetime, timezone, timedelta
 import numpy as np
 import pandas as pd
+import requests
 import yfinance as yf
 
 # ==========================================
@@ -12,9 +14,15 @@ import yfinance as yf
 START_DATE = "2026-08-01"   # 時光機起點
 USE_RESET = True            # 穿底/穿頂重數
 IS_LOOSE = True             # 寬鬆模式 (允許 E 與 R 同日)
-BATCH_SIZE = 60             # 每批下載股數（避免被 Yahoo 限速）
+BATCH_SIZE = 50             # 每批下載股數（避免被 Yahoo 限速）
 
-# 備用港股通核心名單（萬一線上名單接口暫時繁忙時自動啟用）
+# 港交所官方港股通（南向）名單 CSV（滬港通 + 深港通）
+HKEX_URLS = [
+    "https://www.hkex.com.hk/-/media/HKEX-Market/Mutual-Market/Stock-Connect/Eligible-Stocks/View-All-Eligible-Securities_With-File-Format/SEHK_Securities_SH.csv",
+    "https://www.hkex.com.hk/-/media/HKEX-Market/Mutual-Market/Stock-Connect/Eligible-Stocks/View-All-Eligible-Securities_With-File-Format/SEHK_Securities_SZ.csv",
+]
+
+# 備用港股通核心名單（萬一官方連線暫時異常時自動啟用）
 FALLBACK_STOCKS = [
     ("0700.HK", "騰訊控股"), ("9988.HK", "阿里巴巴-W"), ("3690.HK", "美團-W"),
     ("1810.HK", "小米集團-W"), ("9618.HK", "京東集團-SW"), ("9888.HK", "百度集團-SW"),
@@ -41,29 +49,91 @@ def format_hk_ticker(code_str: str) -> str:
     if not digits:
         return ""
     num = int(digits)
+    if num <= 0 or num > 99999:
+        return ""
     return f"{num:04d}.HK"
 
 
+def parse_hkex_csv_bytes(raw_bytes: bytes) -> list:
+    """解析港交所官方 CSV（自動相容 UTF-16 / UTF-8 與 Tab / 逗號分隔）"""
+    text = None
+    for enc in ("utf-16", "utf-8-sig", "utf-8", "latin-1"):
+        try:
+            text = raw_bytes.decode(enc)
+            if "Stock Code" in text or "SEHK" in text or "\t" in text:
+                break
+        except Exception:
+            continue
+    if not text:
+        return []
+
+    stocks = []
+    lines = text.splitlines()
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        sep = "\t" if "\t" in line else ","
+        parts = [p.strip().strip('"').strip("'") for p in line.split(sep)]
+        if len(parts) < 3:
+            continue
+
+        # 尋找 4-5 位數字的股票代號欄位（通常在第 1 或第 2 欄）
+        code_idx = -1
+        for idx in range(min(3, len(parts))):
+            if re.fullmatch(r"\d{1,5}", parts[idx]):
+                code_idx = idx
+                break
+        if code_idx == -1:
+            continue
+
+        ticker = format_hk_ticker(parts[code_idx])
+        if not ticker:
+            continue
+
+        # 取得股票名稱（優先取緊接在代號後的非空欄位）
+        name = ticker
+        for n_idx in range(code_idx + 1, min(code_idx + 4, len(parts))):
+            cand = parts[n_idx].strip()
+            if cand and not re.fullmatch(r"[\d.,\-]+", cand) and cand.upper() not in ("HKD", "CNY", "USD"):
+                name = cand
+                break
+
+        stocks.append((ticker, name))
+    return stocks
+
+
 def fetch_hk_connect_list():
-    """優先透過 akshare 抓取最新港股通成份股（約 550+ 隻），失敗則回退至核心名單"""
-    try:
-        import akshare as ak
-        df = ak.stock_hk_ggt_components_em()
-        code_col = next((c for c in df.columns if "代码" in c or "代碼" in c), None)
-        name_col = next((c for c in df.columns if "名称" in c or "名稱" in c), None)
-        if code_col and name_col and len(df) > 100:
-            stocks = []
-            seen = set()
-            for _, row in df.iterrows():
-                ticker = format_hk_ticker(row[code_col])
-                name = str(row[name_col]).strip()
-                if ticker and ticker not in seen:
-                    seen.add(ticker)
-                    stocks.append((ticker, name))
-            print(f"[INFO] 成功從港股通取得 {len(stocks)} 隻股票")
-            return stocks, "akshare_ggt"
-    except Exception as e:
-        print(f"[WARN] akshare 取得港股通名單失敗，改用內建核心名單: {e}")
+    """優先從港交所官方網站下載滬港通 + 深港通南向名單"""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    }
+    merged = {}
+    # 先放入內建中文名稱對照（讓熱門股優先顯示中文名）
+    zh_name_map = dict(FALLBACK_STOCKS)
+
+    for url in HKEX_URLS:
+        try:
+            resp = requests.get(url, headers=headers, timeout=20)
+            resp.raise_for_status()
+            parsed = parse_hkex_csv_bytes(resp.content)
+            print(f"[INFO] 從 HKEX 取得 {len(parsed)} 筆: {url.split('/')[-1]}")
+            for ticker, name in parsed:
+                if ticker not in merged:
+                    merged[ticker] = zh_name_map.get(ticker, name)
+        except Exception as e:
+            print(f"[WARN] 下載 HKEX 名單失敗 ({url.split('/')[-1]}): {e}")
+
+    if len(merged) >= 100:
+        # 補上核心 ETF（如 2800.HK, 3033.HK）
+        for t, n in FALLBACK_STOCKS:
+            if t not in merged:
+                merged[t] = n
+        result = sorted(merged.items(), key=lambda x: x[0])
+        print(f"[INFO] 港交所官方港股通名單合併完成，共 {len(result)} 隻股票")
+        return result, "hkex_official"
+
+    print("[WARN] HKEX 官方名單筆數不足，改用內建核心名單")
     return FALLBACK_STOCKS, "fallback_core"
 
 
@@ -81,8 +151,6 @@ def run_combo_engine(df: pd.DataFrame, combo_type: str, start_date: str, use_res
 
     is_up = combo_type in ("TERE", "S陽TE", "S陽TERE")
     max_step = {"TERE": 4, "S陽TE": 3, "S陽TERE": 5, "R陰E": 2, "黑白DE": 2}[combo_type]
-
-    # 黑白DE 預設以起點前 20 日低位作為參考支持位
     fixed_sup = float(np.nanmin(lows[-20:])) if n >= 20 else float(np.nanmin(lows))
 
     step = 0
@@ -97,7 +165,6 @@ def run_combo_engine(df: pd.DataFrame, combo_type: str, start_date: str, use_res
     r_high = None
     last_event = ""
     last_event_date = ""
-
     started = False
 
     for i in range(2, n):
@@ -137,7 +204,6 @@ def run_combo_engine(df: pd.DataFrame, combo_type: str, start_date: str, use_res
         track_high = th if track_high is None else max(track_high, th)
         track_low = tl if track_low is None else min(track_low, tl)
 
-        # 1. 重數檢查 (Reset)
         if use_reset and step > 0 and reset_level is not None:
             if is_up and l < reset_level:
                 step = 0
@@ -160,7 +226,6 @@ def run_combo_engine(df: pd.DataFrame, combo_type: str, start_date: str, use_res
                 last_event = "Reset"
                 last_event_date = d
 
-        # 2. 狀態推進邏輯
         prev_step = step
 
         if combo_type == "TERE":
