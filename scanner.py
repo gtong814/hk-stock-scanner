@@ -54,7 +54,7 @@ def format_hk_ticker(code_str: str) -> str:
 
 
 def fetch_hk_connect_list():
-    """從港交所披露易 (HKEXnews) 官方頁面直接解析全部港股通南向股票（約 550+ 隻）"""
+    """從港交所披露易 (HKEXnews) 官方頁面直接解析全部港股通南向股票"""
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     }
@@ -66,7 +66,6 @@ def fetch_hk_connect_list():
             resp.raise_for_status()
             html = resp.text
 
-            # 解析每一列的 <tr> 內的 col-stock-code 與 col-stock-name
             rows = re.findall(r"<tr[^>]*>(.*?)</tr>", html, flags=re.S | re.I)
             merged = {}
             for row in rows:
@@ -88,7 +87,6 @@ def fetch_hk_connect_list():
                 merged[ticker] = zh_name_map.get(ticker, raw_name or ticker)
 
             if len(merged) >= 100:
-                # 補上核心 ETF（如 2800.HK, 3033.HK）
                 for t, n in FALLBACK_STOCKS:
                     if t not in merged:
                         merged[t] = n
@@ -105,7 +103,7 @@ def fetch_hk_connect_list():
 
 
 def run_combo_engine(df: pd.DataFrame, combo_type: str, start_date: str, use_reset=True, is_loose=True):
-    """移植自 Sky Sir Combo Alert Engine (Pine Script v6) 狀態機"""
+    """移植自 Sky Sir Combo Alert Engine (Pine Script v6) 狀態機（含距 EP % 與新鮮度計算）"""
     n = len(df)
     if n < 5:
         return None
@@ -293,12 +291,27 @@ def run_combo_engine(df: pd.DataFrame, combo_type: str, start_date: str, use_res
         if step != prev_step:
             last_event_date = d
 
+    # 新增：計算現價距離 EP 位的百分比 (%)
+    latest_close = float(closes[-1])
+    dist_to_ep_pct = None
+    if ep_level is not None and ep_level > 0:
+        dist_to_ep_pct = round(((latest_close - ep_level) / ep_level) * 100.0, 2)
+
+    # 新增：計算最近一次訊號觸發距離最新交易日相隔幾個交易日
+    days_since_event = None
+    if last_event_date and last_event_date in dates:
+        event_idx = dates.index(last_event_date)
+        days_since_event = (n - 1) - event_idx
+
     return {
         "step": step,
         "max_step": max_step,
+        "is_up": is_up,
         "completed": is_completed,
         "ep_level": round(ep_level, 3) if ep_level is not None else None,
         "reset_level": round(reset_level, 3) if reset_level is not None else None,
+        "dist_to_ep_pct": dist_to_ep_pct,
+        "days_since_event": days_since_event,
         "last_event": last_event,
         "last_event_date": last_event_date
     }
